@@ -1,0 +1,164 @@
+# Activate virtual environment (Mac / Linux)
+   source venv/bin/activate
+
+
+Got it—you’re asking specifically for **session/control-style commands** (not file-based or code-input commands) in **Claude CLI**.
+
+Here’s a clean, **focused list of commands that control sessions, navigation, and general interaction**.
+
+---
+
+# 🔁 Session Management
+
+### Start a new session
+
+```bash
+claude
+```
+
+### Resume last session
+
+```bash
+claude -r
+# or
+claude --resume
+```
+
+### Resume a specific session
+
+```bash
+claude --resume <session-id>
+```
+
+### List previous sessions *(if supported)*
+
+```bash
+claude --list
+```
+
+---
+
+# 🔄 Switch / Navigate Between Sessions
+
+👉 Most versions don’t support direct “switch” like a shell command, but you can:
+
+### Open a specific session
+
+```bash
+claude --resume <session-id>
+```
+
+👉 That’s effectively how you “move” between sessions.
+
+---
+
+# 🧠 In-Session Commands (Slash-style)
+
+These are used **inside an active Claude session**:
+
+### Resume context (continue thinking)
+
+```
+/resume
+```
+
+### Start a fresh topic (clear context)
+
+```
+/new
+```
+
+### Reset conversation
+
+```
+/reset
+```
+
+### Show help
+
+```
+/help
+```
+
+---
+
+# 💬 Ask something unrelated (within session)
+
+Just type normally:
+
+```
+explain docker in simple terms
+```
+
+👉 Claude will:
+
+* Either continue context
+* Or shift topic naturally
+
+If you want a **hard separation**, use:
+
+```
+/new
+```
+
+---
+
+# 🧹 Clear / Reset Context
+
+### Clear session (CLI level)
+
+```bash
+claude --clear
+```
+
+### Or inside session
+
+```
+/reset
+```
+
+---
+
+# ⚙️ General CLI Controls
+
+### Help
+
+```bash
+claude --help
+```
+
+### Version
+
+```bash
+claude --version
+```
+
+---
+
+# ⚠️ Important Reality Check
+
+Not all versions of **Claude CLI** support:
+
+* `/resume`
+* `/new`
+* `/reset`
+* `--list`
+* `--clear`
+
+👉 These depend on:
+
+* Official vs community CLI
+* Version installed
+
+---
+
+# ✔️ Practical Workflow Example
+
+```bash
+claude           # start
+/resume          # continue context
+/new             # switch topic
+/reset           # clear everything
+```
+
+
