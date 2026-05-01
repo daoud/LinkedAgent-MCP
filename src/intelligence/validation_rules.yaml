@@ -1,0 +1,15 @@
+linkedin:
+  max_chars: 3000
+  min_chars: 50
+  max_hashtags: 30
+  max_urls: 5
+  forbidden_words:
+    - "spam"
+    - "click here"
+    - "buy now"
+    - "limited time offer"
+    - "act now"
+    - "guaranteed"
+    - "free money"
+  tone_check: true
+  tone_model: "claude-sonnet-4-6"
