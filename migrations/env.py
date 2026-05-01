@@ -13,7 +13,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Read DATABASE_URL from env and ensure sync driver for alembic
-_db_url = os.getenv("DATABASE_URL", "postgresql://pipeline:pipeline@localhost:5432/pipeline")
+_db_url = os.getenv("DATABASE_URL", "postgresql://pipeline:pipeline@localhost:5433/pipeline")
 for _async_prefix in ("postgresql+asyncpg://", "postgresql+psycopg3://"):
     if _db_url.startswith(_async_prefix):
         _db_url = "postgresql://" + _db_url[len(_async_prefix):]

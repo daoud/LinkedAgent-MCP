@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "websearch"
+      "Bash(make up *)",
+      "Bash(make migrate *)"
     ]
   }
 }

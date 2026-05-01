@@ -1,0 +1,15 @@
+LinkedIn Post Draft: Lessons from Building an Automated Pipeline
+
+Building software is easy. Building software that runs reliably at 3am without you is hard.
+
+After months of building our automated content pipeline, here are the three lessons that changed how I think about production systems:
+
+1. Observability first. If you can't see what's happening, you can't fix it. Log everything. Trace every transaction. Alert on anomalies before users notice.
+
+2. Fail gracefully. Every system will fail. The question is how. Design for retry, rollback, and human override from day one.
+
+3. Test the edges. The happy path is easy. The race condition at midnight when three events fire simultaneously — that's where real bugs live.
+
+What's the production lesson that changed your engineering mindset? I'd love to hear your story.
+
+#SoftwareEngineering #DevOps #ProductionSystems #Reliability

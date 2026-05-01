@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = None
 
     # Database
-    database_url: str = "postgresql://pipeline:pipeline@localhost:5432/pipeline"
+    database_url: str = "postgresql://pipeline:pipeline@localhost:5433/pipeline"
 
     # LinkedIn
     linkedin_client_id: Optional[str] = None
