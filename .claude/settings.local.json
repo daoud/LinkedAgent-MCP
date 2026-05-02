@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(make up *)",
-      "Bash(make migrate *)"
+      "Bash(make migrate *)",
+      "Bash(xargs ls *)"
     ]
   }
 }
