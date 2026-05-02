@@ -13,6 +13,8 @@ from src.api.middleware import APIKeyMiddleware
 from src.api.routes import health, pipeline
 from src.config import get_settings
 from src.database import AsyncSessionLocal
+from src.observability.logging import configure_logging
+from src.observability.tracing import configure_tracing, instrument_fastapi
 from src.ingestion.local_watcher import start_watcher
 from src.models.content_upload import ContentUpload
 from src.pipeline.checkpointer import make_checkpointer
@@ -51,6 +53,11 @@ async def _poll_pending_uploads(app: FastAPI) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    configure_logging(settings)
+    configure_tracing(
+        service_name="linkedin-pipeline",
+        otlp_endpoint=None,
+    )
 
     async with make_checkpointer() as checkpointer:
         app.state.graph = build_graph(checkpointer=checkpointer)
@@ -97,6 +104,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(pipeline.router)
+
+    instrument_fastapi(app)
 
     return app
 

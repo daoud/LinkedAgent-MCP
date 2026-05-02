@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.models.llm_cost import LLMCost
 from src.models.post import Post
+from src.observability.metrics import get_metrics_output
 
 router = APIRouter(tags=["health"])
 
@@ -32,3 +34,11 @@ async def metrics(session: AsyncSession = Depends(get_db)):
     total_cost = float(cost_result.scalar_one_or_none() or 0.0)
 
     return {"posts": post_counts, "total_llm_cost_usd": round(total_cost, 6)}
+
+
+@router.get("/prometheus")
+async def prometheus_metrics():
+    return Response(
+        content=get_metrics_output(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
