@@ -80,25 +80,7 @@ These are used **inside an active Claude session**:
 /help
 ```
 
----
 
-# 💬 Ask something unrelated (within session)
-
-Just type normally:
-
-```
-explain docker in simple terms
-```
-
-👉 Claude will:
-
-* Either continue context
-* Or shift topic naturally
-
-If you want a **hard separation**, use:
-
-```
-/new
 ```
 
 ---
@@ -160,5 +142,10 @@ claude           # start
 /new             # switch topic
 /reset           # clear everything
 ```
+
+# within session ask anything then use 
+/btw
+
+
 
 

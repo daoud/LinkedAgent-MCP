@@ -88,9 +88,9 @@ When mocking in tests, use `AsyncMock` for `session` and `session.execute`, but 
 | 3 — LinkedIn Client (auth, client, rate limiter) | ✅ complete |
 | 4 — Intelligence Layer (sanitizer, transformer, validator, cost tracker, prompt manager) | ✅ complete |
 | 5 — Scheduling + Dedup | ✅ complete |
-| 6 — Approval Workflow (queue, poller, Sheets, Slack) | 🔲 stubs only |
-| 7 — LangGraph Orchestration (state, nodes, graph) | 🔲 stubs only |
-| 8 — FastAPI Service | 🔲 stubs only |
+| 6 — Approval Workflow (queue, poller, Sheets, Slack) | ✅ complete |
+| 7 — LangGraph Orchestration (state, nodes, graph) | ✅ complete |
+| 8 — FastAPI Service | ✅ complete |
 | 9 — Observability + Security | 🔲 stubs only |
 | 10 — Deployment (Dockerfile, CI, K8s) | 🔲 stubs only |
 

@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     google_sheet_id: Optional[str] = None
     slack_webhook_url: Optional[str] = None
 
+    # API / FastAPI
+    api_key: Optional[str] = None
+    cors_origins: str = "*"
+    scheduler_poll_interval_s: int = 60
+
     # ---- Validators --------------------------------------------------------
 
     @field_validator("storage_mode")
