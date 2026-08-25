@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkedin-pipeline-config
+  namespace: linkedin-pipeline
+  labels:
+    app.kubernetes.io/name: linkedin-pipeline
+data:
+  ENVIRONMENT: "production"
+  TIMEZONE: "Asia/Riyadh"
+  LOG_LEVEL: "INFO"
+  ENABLE_METRICS: "true"
+  STORAGE_MODE: "s3"
+  LLM_MODEL: "claude-sonnet-4-20250514"
+  LLM_MONTHLY_BUDGET: "20.00"
+  DAILY_POST_LIMIT: "3"
+  POST_SLOTS: "09:00,13:00,18:00"
+  APPROVAL_TIMEOUT_H: "24"
+  APPROVAL_REQUIRED: "true"
+  CORS_ORIGINS: "*"
+  SCHEDULER_POLL_INTERVAL_S: "60"
+  LOCAL_CONTENT_DIR: "/data/content"
+  AWS_REGION: "us-east-1"

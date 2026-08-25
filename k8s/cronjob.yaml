@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: linkedin-pipeline-db-maintenance
+  namespace: linkedin-pipeline
+  labels:
+    app.kubernetes.io/name: linkedin-pipeline
+spec:
+  # Runs nightly at 02:00 UTC
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+          restartPolicy: OnFailure
+          containers:
+            - name: maintenance
+              image: ghcr.io/daoud/linkedagent-mcp:latest
+              imagePullPolicy: Always
+              command:
+                - python
+                - scripts/production_checklist.py
+                - "--exit-on-error"
+              envFrom:
+                - configMapRef:
+                    name: linkedin-pipeline-config
+                - secretRef:
+                    name: linkedin-pipeline-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi

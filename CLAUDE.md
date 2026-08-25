@@ -91,7 +91,7 @@ When mocking in tests, use `AsyncMock` for `session` and `session.execute`, but 
 | 6 — Approval Workflow (queue, poller, Sheets, Slack) | ✅ complete |
 | 7 — LangGraph Orchestration (state, nodes, graph) | ✅ complete |
 | 8 — FastAPI Service | ✅ complete |
-| 9 — Observability + Security | 🔲 stubs only |
-| 10 — Deployment (Dockerfile, CI, K8s) | 🔲 stubs only |
+| 9 — Observability + Security | ✅ complete |
+| 10 — Deployment (Dockerfile, CI, K8s) | ✅ complete |
 
 Development order is strict — complete each phase gate before starting the next. See `PROJECT_PLAN.md` for full task breakdown and `TASKS.md` for token budget rules.

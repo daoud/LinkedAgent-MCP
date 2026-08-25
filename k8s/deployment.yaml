@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkedin-pipeline
+  namespace: linkedin-pipeline
+  labels:
+    app.kubernetes.io/name: linkedin-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linkedin-pipeline
+  template:
+    metadata:
+      labels:
+        app: linkedin-pipeline
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: api
+          image: ghcr.io/daoud/linkedagent-mcp:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: linkedin-pipeline-config
+            - secretRef:
+                name: linkedin-pipeline-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: content-data
+              mountPath: /data/content
+            - name: google-credentials
+              mountPath: /app/credentials.json
+              subPath: credentials.json
+              readOnly: true
+      volumes:
+        - name: content-data
+          emptyDir: {}
+        - name: google-credentials
+          secret:
+            secretName: google-credentials
+            optional: true
+      restartPolicy: Always
