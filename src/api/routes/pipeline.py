@@ -116,7 +116,7 @@ async def upload_file(
             file_type=file_type,
             content_hash=content_hash,
             file_size_bytes=len(file_bytes),
-            status="pending",
+            status="processing",
         )
         session.add(upload)
         await session.commit()

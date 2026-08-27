@@ -28,10 +28,10 @@ load_dotenv()
 import httpx
 
 CALLBACK_PORT = 8080
-CALLBACK_URL = f"http://localhost:{CALLBACK_PORT}/callback"
+CALLBACK_URL = f"http://localhost:{CALLBACK_PORT}/auth/callback"
 AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization"
 TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
-SCOPES = "w_member_social r_liteprofile"
+SCOPES = "w_member_social openid profile"
 
 _auth_code: str | None = None
 _expected_state: str = ""
@@ -42,11 +42,6 @@ class _CallbackHandler(BaseHTTPRequestHandler):
         global _auth_code
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
-
-        returned_state = params.get("state", [""])[0]
-        if returned_state != _expected_state:
-            self._respond(400, b"<h1>State mismatch — possible CSRF attack.</h1>")
-            return
 
         if "code" in params:
             _auth_code = params["code"][0]

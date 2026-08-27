@@ -15,7 +15,7 @@ from src.config import get_settings
 from src.database import AsyncSessionLocal
 from src.observability.logging import configure_logging
 from src.observability.tracing import configure_tracing, instrument_fastapi
-from src.ingestion.local_watcher import start_watcher
+from src.ingestion.local_watcher import set_main_loop, start_watcher
 from src.models.content_upload import ContentUpload
 from src.pipeline.checkpointer import make_checkpointer
 from src.pipeline.graph import build_graph
@@ -62,6 +62,8 @@ async def lifespan(app: FastAPI):
     async with make_checkpointer() as checkpointer:
         app.state.graph = build_graph(checkpointer=checkpointer)
         app.state.checkpointer = checkpointer
+
+        set_main_loop(asyncio.get_event_loop())
 
         observer = None
         if settings.storage_mode == "local":

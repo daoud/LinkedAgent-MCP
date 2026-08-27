@@ -22,7 +22,7 @@ class ApprovalQueue:
         expires_at = datetime.now(timezone.utc) + timedelta(hours=self._settings.approval_timeout_h)
         approval = Approval(
             post_id=post.id,
-            preview_text=post.content or "",
+            preview_text=post.transformed_text or "",
             scheduled_at=None,
             decision="pending",
             expires_at=expires_at,

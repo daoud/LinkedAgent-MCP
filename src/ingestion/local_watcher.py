@@ -9,6 +9,13 @@ from typing import Optional
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+_main_loop: asyncio.AbstractEventLoop | None = None
+
+
+def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
+    global _main_loop
+    _main_loop = loop
+
 _IGNORED_PREFIXES = (".", "_", "~")
 _IGNORED_SUFFIXES = frozenset((".tmp", ".part", ".swp", ".crdownload", ".ds_store"))
 
@@ -52,7 +59,10 @@ class ContentUploadHandler(FileSystemEventHandler):
         if key in self._seen:
             return
         self._seen.add(key)
-        asyncio.run(self._register(path))
+        if _main_loop and _main_loop.is_running():
+            asyncio.run_coroutine_threadsafe(self._register(path), _main_loop)
+        else:
+            asyncio.run(self._register(path))
 
     async def _register(self, file_path: Path) -> None:
         from sqlalchemy import select  # noqa: PLC0415

@@ -17,7 +17,7 @@ async def transform_node(state: PipelineState) -> dict:
 
     async with AsyncSessionLocal() as session:
         pm = PromptManager(session)
-        system_prompt = await pm.render("linkedin_post", {})
+        system_prompt = await pm.render("linkedin_post", {"content": content, "tone": "professional and insightful"})
 
     transformer = Transformer(api_key=settings.anthropic_api_key)
     result = transformer.transform(content, system_prompt, post_id=post_id)
