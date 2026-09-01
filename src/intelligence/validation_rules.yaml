@@ -12,4 +12,4 @@ linkedin:
     - "guaranteed"
     - "free money"
   tone_check: true
-  tone_model: "claude-sonnet-4-6"
+  tone_model: "claude-sonnet-5"

@@ -38,7 +38,7 @@ def _settings(**kwargs) -> Settings:
 def _post(status: str = "processing") -> Post:
     p = Post()
     p.id = uuid.uuid4()
-    p.content = "Hello LinkedIn!"
+    p.transformed_text = "Hello LinkedIn!"
     p.status = status
     return p
 
@@ -102,7 +102,7 @@ async def test_enqueue_sets_expires_at_in_future():
 async def test_enqueue_preview_truncated_to_content():
     session = _mock_session()
     post = _post()
-    post.content = "My post content"
+    post.transformed_text = "My post content"
     q = ApprovalQueue(session, _settings())
     approval = await q.enqueue(post)
     assert approval.preview_text == "My post content"

@@ -8,6 +8,7 @@ from src.pipeline.nodes.sanitize import sanitize_node
 from src.pipeline.nodes.schedule import schedule_node
 from src.pipeline.nodes.transform import transform_node
 from src.pipeline.nodes.validate import validate_node
+from src.pipeline.nodes.wait_for_slot import wait_for_slot_node
 
 __all__ = [
     "extract_node",
@@ -17,6 +18,7 @@ __all__ = [
     "validate_node",
     "schedule_node",
     "approve_node",
+    "wait_for_slot_node",
     "preview_node",
     "publish_node",
     "finalize_node",

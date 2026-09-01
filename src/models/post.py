@@ -29,7 +29,7 @@ class Post(Base):
     linkedin_post_id: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="pending"
-    )  # pending|processing|awaiting_approval|approved|rejected|publishing|published|failed
+    )  # pending|processing|awaiting_approval|approved|scheduled|rejected|publishing|published|failed
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     last_error: Mapped[Optional[str]] = mapped_column(Text)
     failed_at_node: Mapped[Optional[str]] = mapped_column(Text)

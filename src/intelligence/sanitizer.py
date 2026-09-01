@@ -38,6 +38,9 @@ class SanitizeResult:
     injection_detected: bool
     flags: list[str] = field(default_factory=list)
     is_safe: bool = True
+    model: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 def _local_scan(text: str) -> list[str]:
@@ -45,17 +48,23 @@ def _local_scan(text: str) -> list[str]:
 
 
 class Sanitizer:
-    """Prompt injection defense + content cleaning using Claude Opus 4.7."""
+    """Prompt injection defense + content cleaning using Claude Opus 5."""
 
-    def __init__(self, api_key: str | None = None, _client: Any | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "claude-opus-5",
+        _client: Any | None = None,
+    ) -> None:
         self._client = _client or anthropic.Anthropic(api_key=api_key)
+        self._model = model
 
     def sanitize(self, content: str) -> SanitizeResult:
         content = content[:MAX_CONTENT_CHARS]
         local_flags = _local_scan(content)
 
         response = self._client.messages.create(
-            model="claude-opus-4-7",
+            model=self._model,
             max_tokens=2048,
             thinking={"type": "adaptive"},
             system=_SYSTEM_PROMPT,
@@ -80,4 +89,7 @@ class Sanitizer:
             injection_detected=bool(local_flags) or not llm_safe,
             flags=flags,
             is_safe=is_safe,
+            model=getattr(response, "model", self._model),
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
         )

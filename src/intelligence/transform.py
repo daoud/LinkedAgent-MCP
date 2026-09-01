@@ -19,11 +19,17 @@ class TransformResult:
 class Transformer:
     """LLM transform agent — converts raw content into a LinkedIn post.
 
-    Uses Claude Opus 4.7 with adaptive thinking and streaming.
+    Uses Claude Opus 5 with adaptive thinking and streaming.
     """
 
-    def __init__(self, api_key: str | None = None, _client: Any | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "claude-opus-5",
+        _client: Any | None = None,
+    ) -> None:
         self._client = _client or anthropic.Anthropic(api_key=api_key)
+        self._model = model
 
     def transform(
         self,
@@ -31,7 +37,7 @@ class Transformer:
         system_prompt: str,
         post_id: uuid.UUID | None = None,
     ) -> TransformResult:
-        """Transform raw content into a LinkedIn post via Claude Opus 4.7.
+        """Transform raw content into a LinkedIn post via Claude.
 
         Streams the response to avoid HTTP timeouts on longer outputs.
         """
@@ -39,7 +45,7 @@ class Transformer:
             post_id = uuid.uuid4()
 
         with self._client.messages.stream(
-            model="claude-opus-4-7",
+            model=self._model,
             max_tokens=4096,
             thinking={"type": "adaptive"},
             system=system_prompt,

@@ -12,8 +12,8 @@ from src.pipeline.nodes.sanitize import sanitize_node
 from src.pipeline.nodes.schedule import schedule_node
 from src.pipeline.nodes.transform import transform_node
 from src.pipeline.nodes.validate import validate_node
+from src.pipeline.nodes.wait_for_slot import wait_for_slot_node
 from src.pipeline.state import PipelineState
-
 
 # ---- routing helpers -------------------------------------------------------
 
@@ -25,6 +25,10 @@ def _route_sanitize(state: PipelineState) -> str:
     return "finalize" if not state.get("is_safe", True) else "transform"
 
 
+def _route_transform(state: PipelineState) -> str:
+    return "finalize" if state.get("error") else "validate"
+
+
 def _route_validate(state: PipelineState) -> str:
     return "finalize" if not state.get("validation_passed", True) else "schedule"
 
@@ -32,12 +36,12 @@ def _route_validate(state: PipelineState) -> str:
 def _route_schedule(state: PipelineState) -> str:
     from src.config import get_settings  # avoid circular at module load
 
-    return "approve" if get_settings().approval_required else "preview"
+    return "approve" if get_settings().approval_required else "wait_for_slot"
 
 
 def _route_approve(state: PipelineState) -> str:
     status = state.get("approval_status", "approved")
-    return "finalize" if status in ("rejected", "timeout") else "preview"
+    return "finalize" if status in ("rejected", "timeout") else "wait_for_slot"
 
 
 # ---- graph factory ---------------------------------------------------------
@@ -57,6 +61,7 @@ def build_graph(checkpointer=None):
     g.add_node("validate", validate_node)
     g.add_node("schedule", schedule_node)
     g.add_node("approve", approve_node)
+    g.add_node("wait_for_slot", wait_for_slot_node)
     g.add_node("preview", preview_node)
     g.add_node("publish", publish_node)
     g.add_node("finalize", finalize_node)
@@ -66,10 +71,11 @@ def build_graph(checkpointer=None):
     g.add_edge("extract", "dedup")
     g.add_conditional_edges("dedup", _route_dedup, {"sanitize": "sanitize", "finalize": "finalize"})
     g.add_conditional_edges("sanitize", _route_sanitize, {"transform": "transform", "finalize": "finalize"})
-    g.add_edge("transform", "validate")
+    g.add_conditional_edges("transform", _route_transform, {"validate": "validate", "finalize": "finalize"})
     g.add_conditional_edges("validate", _route_validate, {"schedule": "schedule", "finalize": "finalize"})
-    g.add_conditional_edges("schedule", _route_schedule, {"approve": "approve", "preview": "preview"})
-    g.add_conditional_edges("approve", _route_approve, {"preview": "preview", "finalize": "finalize"})
+    g.add_conditional_edges("schedule", _route_schedule, {"approve": "approve", "wait_for_slot": "wait_for_slot"})
+    g.add_conditional_edges("approve", _route_approve, {"wait_for_slot": "wait_for_slot", "finalize": "finalize"})
+    g.add_edge("wait_for_slot", "preview")
     g.add_edge("preview", "publish")
     g.add_edge("publish", "finalize")
     g.add_edge("finalize", END)

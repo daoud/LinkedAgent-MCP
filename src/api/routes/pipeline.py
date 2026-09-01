@@ -15,12 +15,8 @@ from src.database import AsyncSessionLocal, get_db
 from src.models.approval import Approval
 from src.models.content_upload import ContentUpload
 from src.models.post import Post
+from src.pipeline.resume import resume_pipeline_for_approval
 from src.pipeline.state import PipelineState
-
-try:
-    from langgraph.types import Command
-except ImportError:
-    from langgraph.pregel import Command  # type: ignore[assignment]
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -174,28 +170,13 @@ async def approve(
         if approval is None:
             raise HTTPException(status_code=404, detail="Approval not found")
 
-        r2 = await session.execute(select(Post).where(Post.id == approval.post_id))
-        post = r2.scalar_one()
-        upload_id = post.upload_id
-
-    # thread_id must match the one used when the graph first ran for this upload
-    thread_id = f"upload-{upload_id}"
-    graph = request.app.state.graph
-    decision = body.decision
-    decided_by = body.decided_by
-
-    async def _resume() -> None:
-        config = {"configurable": {"thread_id": thread_id}}
-        try:
-            async for _ in graph.astream(
-                Command(resume={"decision": decision, "decided_by": decided_by}),
-                config=config,
-            ):
-                pass
-        except Exception as exc:
-            print(f"[pipeline] Resume error for approval {approval_id}: {exc}")
-
-    background_tasks.add_task(_resume)
+    background_tasks.add_task(
+        resume_pipeline_for_approval,
+        request.app.state.graph,
+        approval_id,
+        body.decision,
+        body.decided_by,
+    )
     return {"status": "accepted", "approval_id": str(approval_id), "decision": body.decision}
 
 

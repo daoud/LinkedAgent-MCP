@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # LLM
     anthropic_api_key: str
-    llm_model: str = "claude-sonnet-4-20250514"
+    llm_model: str = "claude-opus-5"
     llm_monthly_budget: float = 20.0
 
     # Scheduling
@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     post_slots: str = "09:00,13:00,18:00"
     approval_timeout_h: int = 24
     approval_required: bool = True
+
+    # Auto-publish (folder watcher -> APScheduler pickup, no explicit trigger)
+    # Must be explicitly set to false to let the background poller publish for real.
+    auto_publish_dry_run: bool = True
 
     # Approval integrations
     google_sheets_credentials_file: str = "./credentials.json"

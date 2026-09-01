@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -8,8 +9,14 @@ from src.config import get_settings
 from src.database import AsyncSessionLocal
 from src.linkedin.auth import LinkedInAuth
 from src.linkedin.client import LinkedInClient
+from src.linkedin.rate_limiter import RateLimiter
 from src.models.post import Post
 from src.pipeline.state import PipelineState
+
+# One rate limiter per process, shared across every publish_node invocation —
+# a fresh RateLimiter() per call (the previous behavior) resets the sliding
+# window on every single post and enforces nothing.
+_RATE_LIMITER = RateLimiter()
 
 
 async def publish_node(state: PipelineState) -> dict:
@@ -20,9 +27,9 @@ async def publish_node(state: PipelineState) -> dict:
 
     auth = LinkedInAuth.from_settings(settings)
     profile_urn = settings.linkedin_profile_urn or "urn:li:person:unknown"
-    client = LinkedInClient(auth=auth, profile_urn=profile_urn)
+    client = LinkedInClient(auth=auth, profile_urn=profile_urn, rate_limiter=_RATE_LIMITER)
 
-    result = client.publish(text, dry_run=dry_run)
+    result = await asyncio.to_thread(client.publish, text, dry_run=dry_run)
     linkedin_post_id = result.get("linkedin_post_id")
 
     async with AsyncSessionLocal() as session:
