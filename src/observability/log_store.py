@@ -111,6 +111,11 @@ def install_ring_handler(level: int = logging.INFO, maxlen: int = _MAX) -> None:
         root.addHandler(h)
     # Make sure our pipeline logger propagates to root.
     logging.getLogger("pipeline").setLevel(logging.INFO)
+    # Trim the noisiest third-party loggers so the Logs tab stays readable
+    # (the 60s scheduler tick would otherwise dominate). httpx stays at INFO
+    # so outbound Anthropic / LinkedIn / Slack calls remain visible.
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
+    logging.getLogger("watchdog").setLevel(logging.WARNING)
 
 
 # ---------------------------------------------------------------------------
