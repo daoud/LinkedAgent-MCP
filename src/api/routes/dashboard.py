@@ -874,6 +874,267 @@ async def linkedin_auth_url() -> Any:
 
 
 # ---------------------------------------------------------------------------
+# schedule config + queue
+# ---------------------------------------------------------------------------
+
+_WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_TIME_RE = None
+
+
+def _valid_slot(s: str) -> bool:
+    try:
+        h, m = str(s).strip().split(":")
+        return 0 <= int(h) <= 23 and 0 <= int(m) <= 59
+    except (ValueError, AttributeError):
+        return False
+
+
+@router.get("/schedule")
+async def get_schedule() -> Any:
+    from src.scheduling.config import get_row
+
+    try:
+        async with AsyncSessionLocal() as session:
+            row = await get_row(session)
+            await session.commit()
+            data = {
+                "slots": sorted(row.slots or [], key=lambda x: [int(p) for p in x.split(":")]),
+                "daily_limit": row.daily_limit,
+                "weekdays": row.weekdays or [0, 1, 2, 3, 4, 5, 6],
+                "active_from": row.active_from.isoformat() if row.active_from else None,
+                "active_until": row.active_until.isoformat() if row.active_until else None,
+                "auto_publish": row.auto_publish,
+                "require_approval": row.require_approval,
+                "enabled": row.enabled,
+            }
+        return _ok(schedule=data, weekday_names=_WEEKDAY_NAMES, timezone=get_settings().timezone)
+    except SQLAlchemyError as exc:
+        return _err(f"could not load schedule: {exc}")
+
+
+@router.put("/schedule")
+async def put_schedule(request: Request) -> Any:
+    from src.scheduling.config import get_row, refresh
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _err("invalid JSON body", status=400)
+
+    slots = body.get("slots")
+    if slots is not None:
+        if not isinstance(slots, list) or not all(_valid_slot(s) for s in slots):
+            return _err("slots must be a list of 'HH:MM' strings", status=400)
+        slots = sorted({f"{int(s.split(':')[0]):02d}:{int(s.split(':')[1]):02d}" for s in slots})
+
+    wd = body.get("weekdays")
+    if wd is not None and (not isinstance(wd, list) or not all(isinstance(x, int) and 0 <= x <= 6 for x in wd)):
+        return _err("weekdays must be a list of ints 0..6 (Mon..Sun)", status=400)
+
+    try:
+        from datetime import date as _date
+
+        async with AsyncSessionLocal() as session:
+            row = await get_row(session)
+            if slots is not None:
+                row.slots = slots
+            if wd is not None:
+                row.weekdays = sorted(set(wd))
+            if "daily_limit" in body:
+                row.daily_limit = max(1, min(int(body["daily_limit"]), 100))
+            for k in ("auto_publish", "require_approval", "enabled"):
+                if k in body:
+                    setattr(row, k, bool(body[k]))
+            for k in ("active_from", "active_until"):
+                if k in body:
+                    v = body[k]
+                    setattr(row, k, _date.fromisoformat(v) if v else None)
+            await session.commit()
+            await refresh(session)
+        await log_event("info", "Schedule config updated from dashboard", node="dashboard")
+        return await get_schedule()
+    except (SQLAlchemyError, ValueError) as exc:
+        return _err(f"could not save schedule: {exc}")
+
+
+@router.get("/schedule/queue")
+async def schedule_queue() -> Any:
+    """Upcoming posts grouped by date (scheduled / awaiting_approval / processing)."""
+    try:
+        async with AsyncSessionLocal() as session:
+            rows = list(
+                (
+                    await session.execute(
+                        select(Post)
+                        .where(Post.status.in_(["scheduled", "awaiting_approval", "processing", "publishing"]))
+                        .order_by(Post.scheduled_date.asc().nulls_last(), Post.scheduled_slot.asc().nulls_last())
+                    )
+                ).scalars()
+            )
+        by_date: dict[str, list] = {}
+        for p in rows:
+            key = p.scheduled_date.isoformat() if p.scheduled_date else "unscheduled"
+            by_date.setdefault(key, []).append(
+                {
+                    "id": str(p.id),
+                    "title": p.title or "(untitled)",
+                    "status": p.status,
+                    "slot": p.scheduled_slot.strftime("%H:%M") if p.scheduled_slot else None,
+                    "preview": (p.transformed_text or p.raw_content or "")[:120],
+                }
+            )
+        days = [{"date": k, "posts": v} for k, v in sorted(by_date.items())]
+        return _ok(days=days, total=len(rows))
+    except SQLAlchemyError as exc:
+        return _err(f"could not load queue: {exc}")
+
+
+@router.patch("/posts/{post_id}/schedule")
+async def reschedule_post(post_id: uuid.UUID, request: Request) -> Any:
+    try:
+        body = await request.json()
+    except Exception:
+        return _err("invalid JSON body", status=400)
+    d = body.get("scheduled_date")
+    slot = body.get("scheduled_slot")
+    if not d or not slot or not _valid_slot(slot):
+        return _err("scheduled_date (YYYY-MM-DD) and scheduled_slot (HH:MM) required", status=400)
+    try:
+        from datetime import date as _date
+        from datetime import time as _time
+
+        async with AsyncSessionLocal() as session:
+            p = (
+                await session.execute(select(Post).where(Post.id == post_id))
+            ).scalar_one_or_none()
+            if p is None:
+                return _err("post not found", status=404)
+            if p.status in ("published", "publishing"):
+                return _err("cannot reschedule a published post", status=409)
+            p.scheduled_date = _date.fromisoformat(d)
+            hh, mm = slot.split(":")
+            p.scheduled_slot = _time(int(hh), int(mm))
+            await session.commit()
+        await log_event("info", f"Rescheduled to {d} {slot}", node="dashboard", post_id=post_id)
+        return _ok(post_id=str(post_id), scheduled_date=d, scheduled_slot=slot)
+    except (SQLAlchemyError, ValueError) as exc:
+        return _err(f"could not reschedule: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# content sources (Google Drive folders, ...)
+# ---------------------------------------------------------------------------
+
+@router.get("/sources")
+async def list_sources() -> Any:
+    from src.models.content_source import ContentSource
+
+    try:
+        async with AsyncSessionLocal() as session:
+            rows = list(
+                (await session.execute(select(ContentSource).order_by(ContentSource.created_at))).scalars()
+            )
+        return _ok(
+            sources=[
+                {
+                    "id": str(s.id),
+                    "kind": s.kind,
+                    "name": s.name,
+                    "location": s.location,
+                    "enabled": s.enabled,
+                    "last_polled_at": s.last_polled_at.isoformat() if s.last_polled_at else None,
+                    "last_error": s.last_error,
+                }
+                for s in rows
+            ]
+        )
+    except SQLAlchemyError as exc:
+        return _err(f"could not list sources: {exc}")
+
+
+@router.post("/sources")
+async def add_source(request: Request) -> Any:
+    from src.models.content_source import ContentSource
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _err("invalid JSON body", status=400)
+    kind = body.get("kind", "gdrive")
+    location = (body.get("location") or "").strip()
+    name = (body.get("name") or "").strip() or f"{kind} source"
+    if kind != "gdrive":
+        return _err("only 'gdrive' sources are supported right now", status=400)
+    if not location:
+        return _err("location (the Google Drive folder id) is required", status=400)
+    try:
+        async with AsyncSessionLocal() as session:
+            row = ContentSource(kind=kind, name=name, location=location, enabled=True)
+            session.add(row)
+            await session.commit()
+            sid = str(row.id)
+        await log_event("info", f"Content source added: {name} ({location})", node="dashboard")
+        return _ok(id=sid)
+    except SQLAlchemyError as exc:
+        return _err(f"could not add source: {exc}")
+
+
+@router.patch("/sources/{source_id}")
+async def update_source(source_id: uuid.UUID, request: Request) -> Any:
+    from src.models.content_source import ContentSource
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _err("invalid JSON body", status=400)
+    try:
+        async with AsyncSessionLocal() as session:
+            row = (
+                await session.execute(select(ContentSource).where(ContentSource.id == source_id))
+            ).scalar_one_or_none()
+            if row is None:
+                return _err("source not found", status=404)
+            if "enabled" in body:
+                row.enabled = bool(body["enabled"])
+            if body.get("name"):
+                row.name = str(body["name"]).strip()
+            if body.get("location"):
+                row.location = str(body["location"]).strip()
+            await session.commit()
+        return _ok(id=str(source_id))
+    except SQLAlchemyError as exc:
+        return _err(f"could not update source: {exc}")
+
+
+@router.delete("/sources/{source_id}")
+async def delete_source(source_id: uuid.UUID) -> Any:
+    from src.models.content_source import ContentSource
+
+    try:
+        async with AsyncSessionLocal() as session:
+            row = (
+                await session.execute(select(ContentSource).where(ContentSource.id == source_id))
+            ).scalar_one_or_none()
+            if row is not None:
+                await session.delete(row)
+                await session.commit()
+        return _ok()
+    except SQLAlchemyError as exc:
+        return _err(f"could not delete source: {exc}")
+
+
+@router.post("/sources/poll")
+async def poll_sources_now() -> Any:
+    from src.ingestion.source_poller import poll_sources
+
+    try:
+        n = await poll_sources()
+        return _ok(imported=n)
+    except Exception as exc:  # noqa: BLE001
+        return _err(f"poll failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # util
 # ---------------------------------------------------------------------------
 

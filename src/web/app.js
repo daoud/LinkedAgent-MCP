@@ -459,6 +459,130 @@
     } catch (e) { toast(e.message, "err"); }
   }
 
+  views.schedule = async () => {
+    const [s, q, srcs] = await Promise.all([
+      api("/api/schedule"), api("/api/schedule/queue"), api("/api/sources").catch(() => ({ sources: [] })),
+    ]);
+    const cfg = s.schedule;
+    const wdNames = s.weekday_names;
+
+    // ---- config form ----
+    const slotWrap = h("div", { class: "chips", style: "margin:4px 0" });
+    const renderSlots = () => {
+      slotWrap.innerHTML = "";
+      cfg.slots.forEach((t, i) => slotWrap.append(h("span", { class: "chip" }, t + " ",
+        h("a", { style: "color:var(--err)", onclick: () => { cfg.slots.splice(i, 1); renderSlots(); } }, "✕"))));
+      const add = h("input", { type: "time", style: "width:120px" });
+      add.addEventListener("change", () => { if (add.value && !cfg.slots.includes(add.value)) { cfg.slots.push(add.value); cfg.slots.sort(); renderSlots(); } });
+      slotWrap.append(add);
+    };
+    renderSlots();
+
+    const wdState = new Set(cfg.weekdays);
+    const wdChips = wdNames.map((n, i) => {
+      const chip = h("span", { class: "chip", style: wdState.has(i) ? "background:var(--accent-2);color:#fff;border-color:var(--accent-2)" : "" }, n);
+      chip.addEventListener("click", () => {
+        if (wdState.has(i)) { wdState.delete(i); chip.style.cssText = ""; }
+        else { wdState.add(i); chip.style.cssText = "background:var(--accent-2);color:#fff;border-color:var(--accent-2)"; }
+      });
+      return chip;
+    });
+    const limitIn = h("input", { type: "number", min: "1", max: "100", value: cfg.daily_limit, style: "width:90px" });
+    const fromIn = h("input", { type: "date", value: cfg.active_from || "" });
+    const untilIn = h("input", { type: "date", value: cfg.active_until || "" });
+    const enabledCb = h("input", { type: "checkbox", ...(cfg.enabled ? { checked: true } : {}) });
+    const autoCb = h("input", { type: "checkbox", ...(cfg.auto_publish ? { checked: true } : {}) });
+    const apprCb = h("input", { type: "checkbox", ...(cfg.require_approval ? { checked: true } : {}) });
+
+    const save = h("button", {
+      class: "btn", onclick: async (e) => {
+        e.target.disabled = true;
+        try {
+          await api("/api/schedule", { method: "PUT", json: {
+            slots: cfg.slots,
+            weekdays: [...wdState].sort((a, b) => a - b),
+            daily_limit: +limitIn.value,
+            active_from: fromIn.value || null, active_until: untilIn.value || null,
+            enabled: enabledCb.checked, auto_publish: autoCb.checked, require_approval: apprCb.checked,
+          } });
+          toast("Schedule saved", "ok"); render();
+        } catch (err) { toast(err.message, "err"); e.target.disabled = false; }
+      }
+    }, "Save schedule");
+
+    const perDay = cfg.slots.length;
+    const activeDays = cfg.weekdays.length;
+
+    const configCard = h("div", { class: "card" },
+      h("h3", {}, "How many & when"),
+      h("p", { class: "muted", style: "font-size:12px" },
+        `Right now: up to `, h("b", {}, `${Math.min(cfg.daily_limit, perDay)}`), ` posts on each of `,
+        h("b", {}, `${activeDays}`), ` day(s)/week — times below are in `, h("b", {}, s.timezone), `.`),
+      h("label", { class: "field" }, h("span", {}, "Publish times (slots)"), slotWrap),
+      h("label", { class: "field" }, h("span", {}, "Max posts per day"), limitIn),
+      h("label", { class: "field" }, h("span", {}, "Active weekdays (click to toggle)"), h("div", { class: "chips" }, ...wdChips)),
+      h("div", { class: "grid c2" },
+        h("label", { class: "field" }, h("span", {}, "Start date (optional)"), fromIn),
+        h("label", { class: "field" }, h("span", {}, "End date (optional)"), untilIn)),
+      h("hr", { class: "hr" }),
+      h("label", { class: "toggle", style: "margin:6px 0" }, enabledCb, h("span", { class: "track" }), h("span", {}, "Schedule enabled (pause everything if off)")),
+      h("label", { class: "toggle", style: "margin:6px 0" }, autoCb, h("span", { class: "track" }), h("span", {}, "Auto-publish files from folders / Drive (off = dry-run only)")),
+      h("label", { class: "toggle", style: "margin:6px 0" }, apprCb, h("span", { class: "track" }), h("span", {}, "Still require my approval on each post")),
+      h("div", { style: "margin-top:12px" }, save),
+    );
+
+    // ---- upcoming queue ----
+    const queueCard = h("div", { class: "card pad0" });
+    queueCard.append(h("div", { style: "padding:14px 18px" }, h("h3", { style: "margin:0" }, `Upcoming (${q.total})`)));
+    if (!q.days.length) queueCard.append(h("div", { class: "empty" }, "Nothing queued. Drop files in the content folder or add a Drive source."));
+    q.days.forEach((day) => {
+      const wrap = h("div", { style: "padding:8px 18px;border-top:1px solid var(--line)" },
+        h("b", {}, day.date === "unscheduled" ? "Unscheduled" : new Date(day.date + "T00:00").toDateString()));
+      day.posts.forEach((p) => wrap.append(h("div", { class: "inline", style: "margin:6px 0;font-size:13px" },
+        h("span", { class: "mono", style: "width:52px;color:var(--muted)" }, p.slot || "—"),
+        h("a", { onclick: () => openPost(p.id) }, p.title), pill(p.status),
+        h("button", {
+          class: "btn sm ghost", onclick: async () => {
+            const nd = prompt("New date (YYYY-MM-DD):", day.date === "unscheduled" ? "" : day.date);
+            if (!nd) return;
+            const nt = prompt("New time (HH:MM):", p.slot || "09:00");
+            if (!nt) return;
+            try { await api(`/api/posts/${p.id}/schedule`, { method: "PATCH", json: { scheduled_date: nd, scheduled_slot: nt } }); toast("Rescheduled", "ok"); render(); }
+            catch (e) { toast(e.message, "err"); }
+          }
+        }, "reschedule"))));
+      queueCard.append(wrap);
+    });
+
+    // ---- sources ----
+    const srcCard = h("div", { class: "card" }, h("h3", {}, "Content sources"));
+    srcCard.append(h("p", { class: "muted", style: "font-size:12px" },
+      "Add a Google Drive folder — the system checks it every 2 min and runs any new doc through the pipeline on the schedule above. Share the folder with your service-account email (the one in credentials.json)."));
+    (srcs.sources || []).forEach((src) => srcCard.append(h("div", { class: "inline", style: "margin:6px 0;font-size:13px" },
+      h("b", {}, src.name), h("span", { class: "mono muted" }, src.location),
+      src.last_error ? h("span", { style: "color:var(--err)" }, "err: " + src.last_error.slice(0, 40)) : h("span", { class: "muted" }, src.last_polled_at ? "ok" : "not polled"),
+      h("button", { class: "btn sm ghost", onclick: async () => { await api(`/api/sources/${src.id}`, { method: "PATCH", json: { enabled: !src.enabled } }); render(); } }, src.enabled ? "disable" : "enable"),
+      h("button", { class: "btn sm err", onclick: async () => { if (confirm("Remove this source?")) { await api(`/api/sources/${src.id}`, { method: "DELETE" }); render(); } } }, "remove"))));
+    const nameIn = h("input", { type: "text", placeholder: "label, e.g. 'LinkedIn queue'", style: "max-width:220px" });
+    const locIn = h("input", { type: "text", placeholder: "Google Drive folder ID (from its URL)", style: "max-width:340px" });
+    srcCard.append(h("hr", { class: "hr" }),
+      h("div", { class: "inline" }, nameIn, locIn,
+        h("button", {
+          class: "btn sm", onclick: async () => {
+            if (!locIn.value.trim()) { toast("folder ID required", "warn"); return; }
+            try { await api("/api/sources", { method: "POST", json: { kind: "gdrive", name: nameIn.value, location: locIn.value.trim() } }); toast("Source added", "ok"); render(); }
+            catch (e) { toast(e.message, "err"); }
+          }
+        }, "Add Drive folder"),
+        h("button", { class: "btn sm ghost", onclick: async () => { const r = await api("/api/sources/poll", { method: "POST" }); toast(`Imported ${r.imported} file(s)`, "ok"); render(); } }, "Poll now")));
+
+    viewEl.append(
+      h("div", { class: "inline", style: "margin-bottom:12px" }, h("h1", {}, "Schedule"), h("div", { class: "spacer" }),
+        h("button", { class: "btn ghost", onclick: render }, "↻ Refresh")),
+      h("div", { class: "grid c2" }, configCard, h("div", {}, queueCard, h("div", { style: "height:14px" }), srcCard)),
+    );
+  };
+
   views.approvals = async () => {
     const d = await api("/api/approvals");
     const list = d.approvals || [];

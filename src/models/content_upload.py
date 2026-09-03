@@ -23,6 +23,8 @@ class ContentUpload(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(Text)
     file_type: Mapped[str] = mapped_column(String(32), nullable=False)  # document|image|markdown|text
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    external_id: Mapped[Optional[str]] = mapped_column(Text)  # e.g. Google Drive file id
+    source_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     file_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="pending"

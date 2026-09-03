@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     google_sheet_id: str | None = None
     slack_webhook_url: str | None = None
 
+    # Content sources
+    google_drive_credentials_file: str | None = None  # falls back to the Sheets creds
+    source_poll_interval_s: int = 120
+
     # API / FastAPI
     api_key: str | None = None
     cors_origins: str = "*"

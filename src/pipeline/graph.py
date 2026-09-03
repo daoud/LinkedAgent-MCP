@@ -34,7 +34,7 @@ def _route_validate(state: PipelineState) -> str:
 
 
 def _route_schedule(state: PipelineState) -> str:
-    from src.config import get_settings  # avoid circular at module load
+    from src.scheduling.config import cached  # avoid circular at module load
 
     # A dry run posts nothing, so there is nothing to approve — send it
     # straight through. skip_approval is set by the dashboard's "Publish to
@@ -42,7 +42,7 @@ def _route_schedule(state: PipelineState) -> str:
     # that click *is* the approval.
     if state.get("dry_run") or state.get("skip_approval"):
         return "wait_for_slot"
-    return "approve" if get_settings().approval_required else "wait_for_slot"
+    return "approve" if cached()["require_approval"] else "wait_for_slot"
 
 
 def _route_approve(state: PipelineState) -> str:

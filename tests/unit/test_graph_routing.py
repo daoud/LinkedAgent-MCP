@@ -6,11 +6,6 @@ import pytest
 from src.pipeline import graph as g
 
 
-class _S:
-    def __init__(self, required):
-        self.approval_required = required
-
-
 @pytest.mark.parametrize(
     "state, required, expected",
     [
@@ -23,9 +18,9 @@ class _S:
     ],
 )
 def test_route_schedule(monkeypatch, state, required, expected):
-    monkeypatch.setattr(g, "get_settings", lambda: _S(required), raising=False)
-    # _route_schedule imports get_settings lazily from src.config
-    monkeypatch.setattr("src.config.get_settings", lambda: _S(required))
+    monkeypatch.setattr(
+        "src.scheduling.config.cached", lambda: {"require_approval": required}
+    )
     assert g._route_schedule(state) == expected
 
 

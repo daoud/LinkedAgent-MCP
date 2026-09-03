@@ -42,8 +42,13 @@ async def _run_pipeline_task(graph, upload_id: uuid.UUID, dry_run: bool, thread_
 
 async def _poll_pending_uploads(app: FastAPI) -> None:
     """Pick up ContentUploads in 'pending' state and trigger the pipeline for each."""
-    dry_run = get_settings().auto_publish_dry_run
+    from src.scheduling.config import refresh as refresh_schedule_cfg
+
     async with AsyncSessionLocal() as session:
+        cfg = await refresh_schedule_cfg(session)
+        if not cfg["enabled"]:
+            return
+        dry_run = not cfg["auto_publish"]
         result = await session.execute(
             select(ContentUpload).where(ContentUpload.status == "pending").limit(5)
         )
@@ -57,6 +62,13 @@ async def _poll_pending_uploads(app: FastAPI) -> None:
             )
         if uploads:
             await session.commit()
+
+
+async def _poll_content_sources(app: FastAPI) -> None:
+    """Import new files from Google Drive folders (and other configured sources)."""
+    from src.ingestion.source_poller import poll_sources
+
+    await poll_sources()
 
 
 async def _poll_approvals(app: FastAPI) -> None:
@@ -147,6 +159,15 @@ async def lifespan(app: FastAPI):
 
         set_main_loop(asyncio.get_event_loop())
 
+        # Load the runtime schedule config once so the sync router has it.
+        try:
+            from src.scheduling.config import refresh as _refresh_cfg
+
+            async with AsyncSessionLocal() as _s:
+                await _refresh_cfg(_s)
+        except Exception as exc:  # noqa: BLE001
+            await log_event("warning", f"schedule config not loaded yet: {exc}")
+
         observer = None
         if settings.storage_mode == "local":
             observer = start_watcher(settings.local_content_dir)
@@ -159,8 +180,14 @@ async def lifespan(app: FastAPI):
                 seconds=settings.scheduler_poll_interval_s,
                 args=[app],
             )
+        scheduler.add_job(
+            _safe_job(_poll_content_sources),
+            "interval",
+            seconds=settings.source_poll_interval_s,
+            args=[app],
+        )
         scheduler.start()
-        await log_event("info", "Scheduler + folder watcher started")
+        await log_event("info", "Scheduler + folder watcher + source poller started")
 
         yield
 
