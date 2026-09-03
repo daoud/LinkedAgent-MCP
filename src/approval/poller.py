@@ -52,7 +52,18 @@ class ApprovalPoller:
                 )
                 await self._notifier.notify_decision(approval)
                 actioned.append(approval)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[approval-poller] Failed to record decision for {entry.get('approval_id')}: {exc}")
+                continue
+
+            try:
+                # Mark the row processed so read_decisions() (which matches
+                # decision == "approved"/"rejected" exactly) stops returning
+                # it on every future poll — without this, every decision is
+                # re-applied and re-notified (and the paused graph re-resumed)
+                # on every poll cycle forever.
+                self._sheets.update_decision(entry["approval_id"], f"{entry['decision']}:synced")
+            except Exception as exc:
+                print(f"[approval-poller] Failed to sync back decision for {entry.get('approval_id')}: {exc}")
 
         return actioned

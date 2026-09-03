@@ -87,6 +87,17 @@ class ContentUploadHandler(FileSystemEventHandler):
             except OSError:
                 return
 
+            # Also check by content_hash — an API upload (/pipeline/upload)
+            # writes this same file to disk after already committing its own
+            # ContentUpload row, but the two checks aren't atomic together;
+            # this closes the remaining race so the same content can't get a
+            # second row (and a second pipeline run) under either path.
+            existing_by_hash = await session.execute(
+                select(ContentUpload).where(ContentUpload.content_hash == content_hash)
+            )
+            if existing_by_hash.scalar_one_or_none() is not None:
+                return
+
             upload = ContentUpload(
                 file_name=file_path.name,
                 storage_path=str(file_path.resolve()),

@@ -75,7 +75,14 @@ class Sanitizer:
         try:
             data: dict = json.loads(text)
         except json.JSONDecodeError:
-            data = {"safe": True, "reason": "parse-error", "cleaned": content}
+            # Fail closed: an unparseable scanner response could itself be a
+            # sign of a successful injection against the scanner, so don't
+            # let unscanned content pass through.
+            data = {
+                "safe": False,
+                "reason": "Sanitizer response was not valid JSON — failing closed",
+                "cleaned": "",
+            }
 
         llm_safe = bool(data.get("safe", True))
         is_safe = llm_safe and not local_flags

@@ -87,8 +87,8 @@ def test_content_truncated_at_limit():
     assert len(user_message) <= MAX_CONTENT_CHARS
 
 
-def test_llm_json_parse_error_defaults_safe():
-    """Malformed LLM JSON response → treated as safe (fail-open)."""
+def test_llm_json_parse_error_fails_closed():
+    """Malformed LLM JSON response → treated as unsafe (fail-closed), not passed through."""
     block = MagicMock()
     block.type = "text"
     block.text = "NOT VALID JSON !!!"
@@ -99,7 +99,8 @@ def test_llm_json_parse_error_defaults_safe():
 
     s = Sanitizer(_client=client)
     result = s.sanitize("Normal content here.")
-    assert result.is_safe is True
+    assert result.is_safe is False
+    assert result.cleaned == ""
 
 
 def test_thinking_blocks_ignored():

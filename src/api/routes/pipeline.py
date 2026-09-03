@@ -102,7 +102,6 @@ async def upload_file(
     content_hash = hashlib.sha256(file_bytes).hexdigest()
     file_name = file.filename or f"{uuid.uuid4()}.txt"
     dest = content_dir / file_name
-    dest.write_bytes(file_bytes)
 
     mime_type = file.content_type or mimetypes.guess_type(str(dest))[0]
     file_type = _classify_file_type(mime_type, dest.suffix.lower())
@@ -127,6 +126,12 @@ async def upload_file(
         session.add(upload)
         await session.commit()
         upload_id = upload.id
+
+    # Write to disk only after the ContentUpload row is committed — the local
+    # watcher watches this same directory, and writing the file first would
+    # let it register (and pipeline-trigger) the file before this row exists,
+    # producing a second ContentUpload/pipeline run for the same content.
+    dest.write_bytes(file_bytes)
 
     thread_id = f"upload-{upload_id}"
     background_tasks.add_task(

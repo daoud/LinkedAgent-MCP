@@ -92,8 +92,9 @@ class Validator:
                 f"Too many URLs: {len(urls)} (max {max_urls})",
                 severity="warning",
             ))
+        post_text_lower = post_text.lower()
         for word in forbidden:
-            if word in post_text.lower():
+            if re.search(rf"(?<!\w){re.escape(word)}(?!\w)", post_text_lower):
                 issues.append(ValidationIssue(
                     "forbidden_word",
                     f"Forbidden phrase detected: {word!r}",

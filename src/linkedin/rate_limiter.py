@@ -25,11 +25,18 @@ class RateLimiter:
         with self._lock:
             self._maybe_reset()
             if self._remaining <= 0:
-                sleep_secs = max(0.0, (self._reset_at or 0) - time.time())
-                if sleep_secs > 0:
-                    time.sleep(sleep_secs)
-                self._remaining = self.max_calls
-                self._reset_at = None
+                if self._reset_at is None:
+                    # We don't know when the quota resets (no rate-limit
+                    # headers seen yet) — block conservatively for a fixed
+                    # interval instead of resetting immediately, which would
+                    # make the daily cap a no-op once headers stop arriving.
+                    time.sleep(60.0)
+                else:
+                    sleep_secs = max(0.0, self._reset_at - time.time())
+                    if sleep_secs > 0:
+                        time.sleep(sleep_secs)
+                    self._remaining = self.max_calls
+                    self._reset_at = None
             self._remaining -= 1
 
     def update_from_headers(self, headers: Any) -> None:

@@ -16,6 +16,7 @@ async def finalize_node(state: PipelineState) -> dict:
 
     dry_run = state.get("dry_run", True)
     error = state.get("error")
+    approval_status = state.get("approval_status")
     linkedin_post_id = state.get("linkedin_post_id")
 
     async with AsyncSessionLocal() as session:
@@ -27,6 +28,11 @@ async def finalize_node(state: PipelineState) -> dict:
                 post.status = "failed"
                 post.last_error = post.last_error or error
                 post.failed_at_node = post.failed_at_node or state.get("failed_node")
+        elif approval_status in ("rejected", "timeout"):
+            # approve_node (or ApprovalQueue.expire_timed_out) already set
+            # post.status to "rejected"/"failed" — nothing was published,
+            # don't overwrite that with "approved"/"published" below.
+            pass
         elif dry_run:
             post.status = "approved"
         else:

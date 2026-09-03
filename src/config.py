@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     linkedin_client_secret: Optional[str] = None
     linkedin_access_token: Optional[str] = None
     linkedin_refresh_token: Optional[str] = None
+    linkedin_token_expires_at: Optional[str] = None
     linkedin_profile_urn: Optional[str] = None
 
     # LLM

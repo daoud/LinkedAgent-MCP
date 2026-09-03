@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from src.config import get_settings
 from src.database import AsyncSessionLocal
 from src.ingestion.content_reader import read_content
 from src.ingestion.storage_client import get_storage_client
-from src.config import get_settings
 from src.models.post import Post
 from src.pipeline.state import PipelineState
 

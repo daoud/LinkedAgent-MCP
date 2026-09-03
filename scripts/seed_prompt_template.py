@@ -48,14 +48,14 @@ async def seed() -> None:
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(PromptTemplate).where(PromptTemplate.name == "linkedin_post_default")
+            select(PromptTemplate).where(PromptTemplate.name == "linkedin_post")
         )
         if result.scalar_one_or_none() is not None:
             print("Default prompt template already exists — skipping.")
             return
 
         template = PromptTemplate(
-            name="linkedin_post_default",
+            name="linkedin_post",
             version=1,
             template_text=DEFAULT_TEMPLATE,
             variables=DEFAULT_VARIABLES,

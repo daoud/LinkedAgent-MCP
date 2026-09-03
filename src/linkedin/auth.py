@@ -58,7 +58,7 @@ class LinkedInAuth:
     def from_settings(cls, settings) -> "LinkedInAuth":
         """Build from a pydantic Settings instance."""
         expires_at: Optional[datetime] = None
-        raw_ts = os.getenv("LINKEDIN_TOKEN_EXPIRES_AT")  # not in Settings model
+        raw_ts = settings.linkedin_token_expires_at
         if raw_ts:
             expires_at = datetime.fromtimestamp(float(raw_ts), tz=timezone.utc)
 
@@ -103,6 +103,18 @@ class LinkedInAuth:
                 seconds=data["expires_in"]
             )
         return self._access_token
+
+    # NOTE: a refreshed token is intentionally NOT persisted anywhere here.
+    # An earlier version of this method auto-wrote refreshed tokens back to
+    # .env, but do_refresh() is exercised directly by unit tests against a
+    # mocked HTTP response (tests/unit/test_linkedin_auth.py) — that caused
+    # the real .env to be silently overwritten with mock token values the
+    # moment the test suite ran. Every pipeline node currently builds a
+    # fresh LinkedInAuth via from_settings() per call, so a refresh here is
+    # still only visible for the remainder of that one call — this is a
+    # known limitation, not a fix, until persistence can be made safe to run
+    # under test (e.g. by isolating the .env path instead of writing
+    # whatever find_dotenv() resolves to on the machine running the tests).
 
     def is_token_expired(self) -> bool:
         """True when the token has expired or is within REFRESH_BEFORE_DAYS of expiry."""
