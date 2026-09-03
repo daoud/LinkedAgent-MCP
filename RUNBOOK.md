@@ -242,16 +242,49 @@ published.
 
 ### Scheduling note
 
-`schedule_node` assigns the next free slot from `POST_SLOTS` (default
-`09:00,13:00,18:00`, timezone `TIMEZONE`). After approval, `wait_for_slot`:
+`schedule_node` assigns each post the next free slot from the **Schedule**
+config (dashboard → Schedule tab; seeded from `POST_SLOTS` / `DAILY_POST_LIMIT`
+on first run). Rules:
 
-- **slot time already passed today** → publishes immediately.
-- **slot time is in the future** → the post sits in `scheduled` until the
-  background poller resumes it at slot time (checked every ~60s).
+- Only slots **later than now** are used, so a batch dropped mid-afternoon
+  fills tomorrow's slots rather than firing the past ones back-to-back.
+- Inactive weekdays and out-of-window dates are skipped; when a day is full
+  (`daily_limit`) it rolls to the next active day.
+- After approval, `wait_for_slot` holds the post in `scheduled` until its slot
+  time, then the background poller (~60s) resumes it and it publishes.
+- Dry runs and the drawer's **Publish to LinkedIn** button skip the wait.
 
-To publish right now regardless, either add a slot time a minute in the future
-to `POST_SLOTS` and restart, or manually set the post’s `scheduled_slot` to a
-past time.
+---
+
+## 7b. Bulk & scheduled publishing (Schedule tab)
+
+For "N posts a day on a set cadence", open **Schedule** in the dashboard:
+
+| Control | What it does |
+|---|---|
+| **Publish times (slots)** | Any number of `HH:MM` times (local to `TIMEZONE`). |
+| **Max posts per day** | Cap per active day. |
+| **Active weekdays** | Click to include/exclude days. |
+| **Start / end date** | Optional window the schedule runs within. |
+| **Schedule enabled** | Master off switch — pauses all auto-pickup. |
+| **Auto-publish files from folders / Drive** | On = folder/Drive drops publish live. Off = they run as dry-run previews only. |
+| **Still require my approval** | Keep the human gate on each post. |
+| **Upcoming** | Every queued post grouped by day + slot; *reschedule* any one. |
+
+**Where posts come from:**
+
+1. **Local folder** — drop `.md`/`.txt`/`.pdf`/`.docx` in `LOCAL_CONTENT_DIR`
+   (default `./test_content/`). Picked up within ~60s.
+2. **Google Drive folder** — Schedule tab → *Content sources* → paste the
+   folder ID → *Add Drive folder*. Checked every 2 min; new docs (incl. native
+   Google Docs) are imported and scheduled. **Setup:** the service account in
+   `credentials.json` needs the Drive read-only scope, and you must **share the
+   Drive folder with the service-account email** (same account as the approval
+   Sheet). Optionally set `GOOGLE_DRIVE_CREDENTIALS_FILE` for a separate file.
+
+Example — 10 posts/day, weekdays, ~90 min apart:
+`08:00, 09:30, 11:00, 12:30, 14:00, 15:30, 17:00, 18:30, 20:00, 21:30`,
+Max/day `10`, weekdays `Mon–Fri`. Drop 30 docs → 10 Mon, 10 Tue, 10 Wed.
 
 ---
 
