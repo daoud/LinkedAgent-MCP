@@ -31,9 +31,19 @@ class ApprovalRequest(BaseModel):
     decided_by: str = "api"
 
 
-async def _run_pipeline(graph, upload_id: uuid.UUID, dry_run: bool, thread_id: str) -> None:
+async def _run_pipeline(
+    graph,
+    upload_id: uuid.UUID,
+    dry_run: bool,
+    thread_id: str,
+    post_id: uuid.UUID | None = None,
+) -> None:
     config = {"configurable": {"thread_id": thread_id}}
     state: PipelineState = {"upload_id": upload_id, "dry_run": dry_run}
+    if post_id is not None:
+        # Retry: tell extract_node to reuse this Post row instead of
+        # creating a new one (which would collide on post_hash / dedup).
+        state["post_id"] = post_id
     try:
         async for _ in graph.astream(state, config=config):
             pass
@@ -146,10 +156,12 @@ async def retry(
         post.failed_at_node = None
         await session.commit()
 
-    # Fresh thread_id so the retry starts from scratch rather than resuming a paused graph
+    # Fresh thread_id so the retry starts from scratch rather than resuming a paused graph.
+    # Pass post_id so extract_node reuses this row instead of creating a new Post — a new
+    # row would hit the post_hash UNIQUE constraint and be flagged as a duplicate.
     thread_id = f"retry-{post_id}-{uuid.uuid4().hex[:8]}"
     background_tasks.add_task(
-        _run_pipeline, request.app.state.graph, upload_id, dry_run, thread_id
+        _run_pipeline, request.app.state.graph, upload_id, dry_run, thread_id, post_id
     )
     return {"status": "accepted", "post_id": str(post_id), "thread_id": thread_id}
 
