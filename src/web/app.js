@@ -183,27 +183,47 @@
     dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); setImg(e.dataTransfer.files[0]); });
 
     const runPanel = h("div", { hidden: true });
-    const submit = h("button", { class: "btn" }, "Generate & run pipeline");
+    const submit = h("button", { class: "btn" });
+    const modeBanner = h("div", { class: "box", style: "margin:4px 0" });
+    const syncMode = () => {
+      if (dryToggle.checked) {
+        modeBanner.className = "box warn";
+        modeBanner.innerHTML = "<b>PREVIEW MODE.</b> Runs every check and shows you the post — but <b>nothing is sent to LinkedIn</b>. Turn the toggle off to publish.";
+        submit.className = "btn ghost";
+        submit.textContent = "Run preview (dry run)";
+      } else {
+        modeBanner.className = "box danger";
+        modeBanner.innerHTML = "<b>LIVE.</b> This <b>WILL post to your LinkedIn</b>" +
+          (state.overview?.config?.approval_required ? " after you approve it." : " once it passes the checks.");
+        submit.className = "btn err";
+        submit.textContent = "Publish to LinkedIn →";
+      }
+    };
+    dryToggle.addEventListener("change", syncMode);
+    syncMode();
 
     submit.addEventListener("click", async () => {
       if (!contentTa.value.trim()) { toast("write some content first", "warn"); return; }
+      const live = !dryToggle.checked;
+      if (live && !confirm("Publish this to your real LinkedIn account?" +
+          (state.overview?.config?.approval_required ? "\n\nIt will pause for your approval first." : ""))) return;
       submit.disabled = true; submit.textContent = "Submitting…";
       try {
         const fd = new FormData();
         fd.append("text", contentTa.value.trim());
         fd.append("title", titleIn.value.trim());
         fd.append("tone", toneSel.value);
-        fd.append("dry_run", dryToggle.checked ? "true" : "false");
+        fd.append("dry_run", live ? "false" : "true");
         if (imageFile) fd.append("image", imageFile);
         const d = await api("/api/compose", { method: "POST", body: fd });
-        toast(`Pipeline started (${d.dry_run ? "dry run" : "LIVE"})`, "ok");
+        toast(d.dry_run ? "Preview run started — nothing will be posted" : "LIVE run started", d.dry_run ? "" : "ok");
         runPanel.hidden = false;
         trackRun(runPanel, d.upload_id, d.dry_run);
         contentTa.value = ""; titleIn.value = ""; imageFile = null; dzImg.hidden = true;
         dzText.textContent = "Drop an image here, or click to choose";
       } catch (e) {
         toast(e.message, "err");
-      } finally { submit.disabled = false; submit.textContent = "Generate & run pipeline"; }
+      } finally { submit.disabled = false; syncMode(); }
     });
 
     viewEl.append(
@@ -220,9 +240,9 @@
           h("h3", {}, "Image (optional)"), dz, fileInput,
           h("hr", { class: "hr" }),
           h("h3", {}, "Run options"),
-          h("label", { class: "toggle", style: "margin:6px 0" }, dryToggle, h("span", { class: "track" }), h("span", {}, "Dry run (validate everything, do NOT post to LinkedIn)")),
-          h("p", { class: "muted", style: "font-size:12px" }, "Turn dry run OFF to publish for real. If approval is required, the post will pause at 'awaiting approval' — handle it in the Approvals tab."),
-          h("div", { style: "margin-top:14px" }, submit),
+          h("label", { class: "toggle", style: "margin:6px 0" }, dryToggle, h("span", { class: "track" }), h("span", {}, "Dry run")),
+          modeBanner,
+          h("div", { style: "margin-top:12px" }, submit),
           runPanel,
         ),
       ),
@@ -233,15 +253,15 @@
     panel.innerHTML = "";
     const bar = h("div", { class: "progress" }, h("i", { style: "width:8%" }));
     const label = h("div", { class: "muted", style: "margin:8px 0 4px", html: "Starting…" });
-    const link = h("div", {});
-    panel.append(h("hr", { class: "hr" }), h("h3", {}, "Live status"), bar, label, link);
+    const outcome = h("div", { style: "margin-top:10px" });
+    panel.append(h("hr", { class: "hr" }), h("h3", {}, "Status"), bar, label, outcome);
     const steps = { processing: 25, awaiting_approval: 55, scheduled: 70, publishing: 88, published: 100, approved: 100, failed: 100, rejected: 100 };
     let tries = 0;
     const poll = async () => {
       tries++;
       let post = null;
       try {
-        const list = await api(`/api/posts?limit=5`);
+        const list = await api(`/api/posts?limit=6`);
         post = (list.posts || []).find((p) => p.upload_id === uploadId);
       } catch { /* keep trying */ }
       if (!post) {
@@ -249,21 +269,45 @@
         return setTimeout(poll, 1500);
       }
       bar.firstChild.style.width = (steps[post.status] || 20) + "%";
-      label.innerHTML = `Status: ` + post.status.replace(/_/g, " ") + (post.failed_at_node ? ` (at ${post.failed_at_node})` : "");
-      if (["published", "approved", "failed", "rejected"].includes(post.status)) {
-        link.innerHTML = "";
-        if (post.status === "failed") { label.innerHTML += ` — ${esc(post.last_error || "")}`; }
-        const btn = h("button", { class: "btn sm ghost", onclick: () => openPost(post.id) }, "Open post");
-        link.append(btn);
-        if (post.linkedin_url) link.append(" ", h("a", { href: post.linkedin_url, target: "_blank" }, "View on LinkedIn ↗"));
-        if (post.status === "awaiting_approval") link.append(" ", h("button", { class: "btn sm", onclick: () => go("approvals") }, "Go to approvals"));
+      label.innerHTML = `Status: <b>` + post.status.replace(/_/g, " ") + `</b>` + (post.failed_at_node ? ` (at ${post.failed_at_node})` : "");
+
+      if (post.status === "published") {
+        outcome.innerHTML = "";
+        outcome.append(h("div", { class: "box ok" }, h("b", {}, "✓ Published to LinkedIn.")),
+          h("div", { class: "inline", style: "margin-top:8px" },
+            post.linkedin_url && h("a", { class: "btn sm", href: post.linkedin_url, target: "_blank" }, "View on LinkedIn ↗"),
+            h("button", { class: "btn sm ghost", onclick: () => openPost(post.id) }, "Open post")));
         return;
       }
-      if (post.status === "awaiting_approval") {
-        link.innerHTML = "";
-        link.append(h("button", { class: "btn sm", onclick: () => go("approvals") }, "Approve / reject →"));
+      if (post.status === "approved") {   // a dry run finished — nothing was posted
+        outcome.innerHTML = "";
+        outcome.append(
+          h("div", { class: "box warn" }, h("b", {}, "Preview passed every check — but this was a dry run, so nothing was posted to LinkedIn.")),
+          h("div", { class: "inline", style: "margin-top:8px" },
+            h("button", { class: "btn sm ghost", onclick: () => openPost(post.id) }, "Review the draft"),
+            h("button", {
+              class: "btn sm err", onclick: async (e) => {
+                if (!confirm("Publish this to your real LinkedIn account now?")) return;
+                e.target.disabled = true; e.target.textContent = "Publishing…";
+                try { await api(`/api/posts/${post.id}/publish`, { method: "POST" }); toast("Publishing…", "ok"); tries = 0; poll(); }
+                catch (err) { toast(err.message, "err"); e.target.disabled = false; e.target.textContent = "Publish to LinkedIn"; }
+              }
+            }, "Publish to LinkedIn")));
+        return;
       }
-      if (tries < 120) setTimeout(poll, 1800);
+      if (post.status === "failed") {
+        outcome.innerHTML = "";
+        outcome.append(h("div", { class: "box danger" }, h("b", {}, "Failed: "), esc(post.last_error || "unknown")),
+          h("button", { class: "btn sm ghost", style: "margin-top:8px", onclick: () => openPost(post.id) }, "Open post"));
+        return;
+      }
+      if (post.status === "rejected") { outcome.innerHTML = "<span class='muted'>Rejected — not published.</span>"; return; }
+      if (post.status === "awaiting_approval") {
+        outcome.innerHTML = "";
+        outcome.append(h("div", { class: "box" }, "Waiting for your approval before it publishes."),
+          h("button", { class: "btn sm", style: "margin-top:8px", onclick: () => go("approvals") }, "Go to Approvals →"));
+      }
+      if (tries < 200) setTimeout(poll, 1800);
     };
     poll();
   }
@@ -276,6 +320,9 @@
         h("td", {}, h("div", {}, p.title || h("span", { class: "muted" }, "(untitled)")),
           h("small", { class: "mono" }, (p.preview || "").slice(0, 70))),
         h("td", {}, pill(p.status)),
+        h("td", {}, p.linkedin_url
+          ? h("a", { href: p.linkedin_url, target: "_blank", onclick: (e) => e.stopPropagation() }, "on LinkedIn ↗")
+          : h("span", { class: "muted" }, "—")),
         !compact && h("td", { class: "muted" }, p.source || "—"),
         !compact && h("td", {}, p.has_image ? "🖼" : ""),
         h("td", { class: "muted" }, fmtCost(p.cost_usd)),
@@ -284,7 +331,7 @@
     });
     return h("table", {},
       h("thead", {}, h("tr", {},
-        h("th", {}, "Post"), h("th", {}, "Status"),
+        h("th", {}, "Post"), h("th", {}, "Status"), h("th", {}, "LinkedIn"),
         !compact && h("th", {}, "Source"), !compact && h("th", {}, "Img"),
         h("th", {}, "Cost"), h("th", {}, "Created"))),
       tb);
@@ -332,10 +379,17 @@
         h("button", { class: "btn sm ok", onclick: () => decidePost(id, "approved") }, "Approve"),
         h("button", { class: "btn sm err", onclick: () => decidePost(id, "rejected") }, "Reject"));
     }
-    if (["failed", "rejected", "approved"].includes(p.status)) {
+    if (["failed", "rejected", "approved"].includes(p.status) && !p.linkedin_post_id) {
       actions.append(
-        h("button", { class: "btn sm ghost", onclick: () => retryPost(id, true) }, "Retry (dry run)"),
-        h("button", { class: "btn sm warn", onclick: () => retryPost(id, false) }, "Retry LIVE"));
+        h("button", {
+          class: "btn sm err", onclick: async (e) => {
+            if (!confirm("Publish this to your real LinkedIn account?")) return;
+            e.target.disabled = true; e.target.textContent = "Publishing…";
+            try { await api(`/api/posts/${id}/publish`, { method: "POST" }); toast("Publishing to LinkedIn…", "ok"); closeDrawer(); setTimeout(() => openPost(id), 1500); }
+            catch (err) { toast(err.message, "err"); e.target.disabled = false; e.target.textContent = "Publish to LinkedIn"; }
+          }
+        }, "Publish to LinkedIn"),
+        h("button", { class: "btn sm ghost", onclick: () => retryPost(id, true) }, "Re-run preview"));
     }
     if (p.linkedin_url) actions.append(h("a", { class: "btn sm ghost", href: p.linkedin_url, target: "_blank" }, "View on LinkedIn ↗"));
     actions.append(h("button", { class: "btn sm ghost", onclick: () => { navigator.clipboard?.writeText(draft.value); toast("Copied"); } }, "Copy text"));
@@ -357,10 +411,20 @@
       l.node ? h("b", {}, `[${l.node}] `) : "", l.message)));
     if (!(d.logs || []).length) tl.append(h("div", { class: "muted" }, "no log events recorded"));
 
+    const statusNote = {
+      approved: ["warn", "Passed every check in a dry run — <b>not posted to LinkedIn</b>. Use “Publish to LinkedIn” below to send it for real."],
+      published: ["ok", "Live on LinkedIn."],
+      awaiting_approval: ["", "Waiting for your approval before it publishes."],
+      scheduled: ["", "Approved — will publish automatically at its scheduled slot."],
+      failed: ["danger", "The pipeline stopped. See the error and timeline below."],
+      rejected: ["danger", "Rejected — not published."],
+    }[p.status];
+
     panel.innerHTML = "";
     panel.append(
       h("div", { class: "close", onclick: closeDrawer }, "✕"),
       h("div", { class: "inline" }, h("h1", { style: "margin:0" }, p.title || "Untitled post"), pill(p.status)),
+      statusNote ? h("div", { class: "box " + statusNote[0], html: statusNote[1] }) : "",
       h("div", { class: "kv" },
         h("b", {}, "Source"), h("span", {}, p.source || "—"),
         h("b", {}, "Tone"), h("span", {}, p.tone || "—"),

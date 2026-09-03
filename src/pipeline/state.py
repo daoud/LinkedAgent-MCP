@@ -12,6 +12,7 @@ class PipelineState(TypedDict, total=False):
     image_path: str | None        # local path to an image to attach on publish
     source: str | None            # how the run was started: watcher|api|compose|compose-text
     title: str | None             # optional human label for the post
+    skip_approval: bool           # dashboard "Publish to LinkedIn" after a reviewed dry run
 
     # --- Post tracking ---
     post_id: uuid.UUID | None

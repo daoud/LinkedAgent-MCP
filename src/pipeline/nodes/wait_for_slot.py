@@ -27,6 +27,11 @@ async def wait_for_slot_node(state: PipelineState) -> dict:
     the moment a post is approved. Resumed by the scheduled-post poller in
     api/app.py once the slot time is due.
     """
+    # A dry run isn't going anywhere, and "Publish to LinkedIn" from the
+    # dashboard means now — neither should sit on the slot queue.
+    if state.get("dry_run") or state.get("skip_approval"):
+        return {}
+
     post_id = state["post_id"]
     settings = get_settings()
     tz = pytz.timezone(settings.timezone)

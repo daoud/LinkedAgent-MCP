@@ -358,6 +358,44 @@ async def retry_post(post_id: uuid.UUID, request: Request, background_tasks: Bac
         return _err(f"could not retry: {exc}")
 
 
+@router.post("/posts/{post_id}/publish")
+async def publish_post(post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
+    """Publish a post that finished a dry run (or failed) — re-runs it LIVE."""
+    try:
+        async with AsyncSessionLocal() as session:
+            p = (
+                await session.execute(select(Post).where(Post.id == post_id))
+            ).scalar_one_or_none()
+            if p is None:
+                return _err("post not found", status=404)
+            if p.status in ("published", "publishing"):
+                return _err("post is already published", status=409)
+            if p.upload_id is None:
+                return _err("post has no source content to publish from", status=400)
+            if not get_settings().linkedin_access_token:
+                return _err("LinkedIn is not configured — cannot publish", status=400)
+            upload_id = p.upload_id
+            p.status = "processing"
+            p.retry_count = (p.retry_count or 0) + 1
+            p.last_error = None
+            p.failed_at_node = None
+            await session.commit()
+        thread_id = f"publish-{post_id}-{uuid.uuid4().hex[:8]}"
+        background_tasks.add_task(
+            run_pipeline,
+            request.app.state.graph,
+            upload_id,
+            dry_run=False,
+            thread_id=thread_id,
+            post_id=post_id,
+            extra_state={"skip_approval": True},
+        )
+        await log_event("info", "LIVE publish requested from dashboard", node="dashboard", post_id=post_id)
+        return _ok(post_id=str(post_id), thread_id=thread_id, live=True)
+    except SQLAlchemyError as exc:
+        return _err(f"could not publish: {exc}")
+
+
 @router.post("/posts/{post_id}/decision")
 async def post_decision(post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
     try:

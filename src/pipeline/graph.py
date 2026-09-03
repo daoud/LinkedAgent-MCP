@@ -36,6 +36,12 @@ def _route_validate(state: PipelineState) -> str:
 def _route_schedule(state: PipelineState) -> str:
     from src.config import get_settings  # avoid circular at module load
 
+    # A dry run posts nothing, so there is nothing to approve — send it
+    # straight through. skip_approval is set by the dashboard's "Publish to
+    # LinkedIn" button on a post the human already reviewed in its dry run;
+    # that click *is* the approval.
+    if state.get("dry_run") or state.get("skip_approval"):
+        return "wait_for_slot"
     return "approve" if get_settings().approval_required else "wait_for_slot"
 
 
