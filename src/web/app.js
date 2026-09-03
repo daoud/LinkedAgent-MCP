@@ -78,6 +78,7 @@
   }
   window.addEventListener("hashchange", () => {
     const v = location.hash.slice(1);
+    if (v.startsWith("post/")) { openPost(v.slice(5)); return; }
     if (v && v !== state.view) go(v);
   });
 
@@ -306,6 +307,7 @@
   async function openPost(id) {
     const drawer = $("#drawer"), panel = $("#drawer-panel");
     drawer.hidden = false;
+    if (location.hash !== "#post/" + id) history.replaceState(null, "", "#post/" + id);
     panel.innerHTML = "";
     panel.append(h("div", { class: "close", onclick: closeDrawer }, "✕"), h("p", { class: "muted" }, "Loading…"));
     $(".drawer-back").onclick = closeDrawer;
@@ -366,7 +368,10 @@
       tl,
     );
   }
-  function closeDrawer() { $("#drawer").hidden = true; }
+  function closeDrawer() {
+    $("#drawer").hidden = true;
+    if (location.hash.startsWith("#post/")) history.replaceState(null, "", "#" + state.view);
+  }
 
   async function decidePost(id, decision) {
     try { await api(`/api/posts/${id}/decision`, { method: "POST", json: { decision } });
@@ -562,7 +567,8 @@
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
   const start = location.hash.slice(1) || "overview";
-  go(start);
+  if (start.startsWith("post/")) { go("posts"); openPost(start.slice(5)); }
+  else go(start);
   refreshBadges();
   setInterval(refreshBadges, 15000);
 })();

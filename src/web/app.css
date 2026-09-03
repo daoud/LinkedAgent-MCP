@@ -155,7 +155,7 @@ tbody tr:hover { background: var(--bg-2); }
 
 /* ---- logs ---- */
 .logbox {
-  background: #0a0d12; border: 1px solid var(--line); border-radius: var(--radius);
+  background: #0a0d12; color: #cdd9e5; border: 1px solid var(--line); border-radius: var(--radius);
   font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.6;
   padding: 12px 14px; height: 62vh; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
 }
@@ -204,4 +204,4 @@ tbody tr:hover { background: var(--bg-2); }
 .empty { color: var(--muted); text-align: center; padding: 40px; }
 .progress { height: 6px; background: var(--bg-2); border-radius: 4px; overflow: hidden; }
 .progress > i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
-.pre { background: #0a0d12; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; max-height: 340px; overflow: auto; }
+.pre { background: #0a0d12; color: #e8eef6; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; max-height: 340px; overflow: auto; }
