@@ -53,3 +53,9 @@ service_account*.json
 
 # Docker local data
 .docker/
+
+# Uploaded media (dashboard compose)
+media/
+
+# Generated docs
+LinkedIn_Pipeline_Complete_Guide.pdf

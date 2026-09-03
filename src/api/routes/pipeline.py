@@ -16,7 +16,7 @@ from src.models.approval import Approval
 from src.models.content_upload import ContentUpload
 from src.models.post import Post
 from src.pipeline.resume import resume_pipeline_for_approval
-from src.pipeline.state import PipelineState
+from src.pipeline.runner import run_pipeline
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -38,17 +38,16 @@ async def _run_pipeline(
     thread_id: str,
     post_id: uuid.UUID | None = None,
 ) -> None:
-    config = {"configurable": {"thread_id": thread_id}}
-    state: PipelineState = {"upload_id": upload_id, "dry_run": dry_run}
-    if post_id is not None:
-        # Retry: tell extract_node to reuse this Post row instead of
-        # creating a new one (which would collide on post_hash / dedup).
-        state["post_id"] = post_id
-    try:
-        async for _ in graph.astream(state, config=config):
-            pass
-    except Exception as exc:
-        print(f"[pipeline] Error for upload {upload_id}: {exc}")
+    # Thin wrapper kept for call-site compatibility; all crash-safety and
+    # logging lives in src.pipeline.runner.run_pipeline.
+    await run_pipeline(
+        graph,
+        upload_id,
+        dry_run=dry_run,
+        thread_id=thread_id,
+        post_id=post_id,
+        extra_state={"source": "api"},
+    )
 
 
 @router.post("/trigger")

@@ -7,6 +7,7 @@ from src.database import AsyncSessionLocal
 from src.ingestion.content_reader import read_content
 from src.ingestion.storage_client import get_storage_client
 from src.models.post import Post
+from src.observability.log_store import log_event
 from src.pipeline.state import PipelineState
 
 
@@ -28,6 +29,7 @@ async def extract_node(state: PipelineState) -> dict:
             post.transformed_text = None
             post.post_hash = None
             post.linkedin_post_id = None
+            post.image_asset_urn = None
             post.scheduled_slot = None
             post.scheduled_date = None
             post.last_error = None
@@ -37,6 +39,17 @@ async def extract_node(state: PipelineState) -> dict:
             session.add(post)
             await session.flush()
 
+        # Compose-time metadata (only overwrite when the caller supplied it,
+        # so a retry keeps whatever the original run had).
+        if state.get("source"):
+            post.source = state["source"]
+        if state.get("tone"):
+            post.tone = state["tone"]
+        if state.get("title"):
+            post.title = state["title"]
+        if state.get("image_path"):
+            post.image_path = state["image_path"]
+
         post_id = post.id
 
         storage_client = get_storage_client(settings)
@@ -44,5 +57,14 @@ async def extract_node(state: PipelineState) -> dict:
 
         post.raw_content = text
         await session.commit()
+
+    await log_event(
+        "info",
+        f"Pipeline started (dry_run={state.get('dry_run', True)}, "
+        f"source={post.source}, image={'yes' if state.get('image_path') else 'no'})",
+        node="extract",
+        post_id=post_id,
+        upload_id=upload_id,
+    )
 
     return {"post_id": post_id, "raw_content": text}

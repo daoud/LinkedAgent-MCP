@@ -7,8 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.models.post import Post
+from src.pipeline.nodes import publish as publish_mod
 from src.pipeline.nodes.preview import preview_node
 from src.pipeline.nodes.publish import publish_node
+
+
+@pytest.fixture(autouse=True)
+def _no_db_logging(monkeypatch):
+    monkeypatch.setattr(publish_mod, "log_event", AsyncMock())
 
 
 def _session_cm(post: Post):

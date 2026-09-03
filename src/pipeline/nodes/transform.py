@@ -33,7 +33,8 @@ async def transform_node(state: PipelineState) -> dict:
             }
 
         pm = PromptManager(session)
-        system_prompt = await pm.render("linkedin_post", {"content": content, "tone": "professional and insightful"})
+        tone = state.get("tone") or "professional and insightful"
+        system_prompt = await pm.render("linkedin_post", {"content": content, "tone": tone})
 
     transformer = Transformer(api_key=settings.anthropic_api_key, model=settings.llm_model)
     result = await asyncio.to_thread(transformer.transform, content, system_prompt, post_id=post_id)

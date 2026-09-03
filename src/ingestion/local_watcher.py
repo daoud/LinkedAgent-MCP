@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import mimetypes
 from pathlib import Path
-from typing import Optional
+
+_log = logging.getLogger("pipeline")
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -20,7 +22,7 @@ _IGNORED_PREFIXES = (".", "_", "~")
 _IGNORED_SUFFIXES = frozenset((".tmp", ".part", ".swp", ".crdownload", ".ds_store"))
 
 
-def _classify_file_type(mime_type: Optional[str], suffix: str) -> str:
+def _classify_file_type(mime_type: str | None, suffix: str) -> str:
     if mime_type:
         if mime_type == "application/pdf":
             return "document"
@@ -110,7 +112,7 @@ class ContentUploadHandler(FileSystemEventHandler):
             )
             session.add(upload)
             await session.commit()
-            print(f"[watcher] Registered: {file_path.name} (upload_id={upload.id})")
+            _log.info("[watcher] registered %s (upload_id=%s)", file_path.name, upload.id)
 
 
 def start_watcher(content_dir: str) -> Observer:
@@ -119,5 +121,5 @@ def start_watcher(content_dir: str) -> Observer:
     handler = ContentUploadHandler(content_dir)
     observer.schedule(handler, str(content_dir), recursive=False)
     observer.start()
-    print(f"[watcher] Watching: {content_dir}")
+    _log.info("[watcher] watching %s", content_dir)
     return observer

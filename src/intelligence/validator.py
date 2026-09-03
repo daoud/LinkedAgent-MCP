@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -8,6 +7,8 @@ from typing import Any
 
 import anthropic
 import yaml
+
+from src.intelligence.jsonutil import parse_json_object
 
 _HASHTAG_RE = re.compile(r"#\w+")
 _URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
@@ -131,9 +132,8 @@ class Validator:
         out_tok = response.usage.output_tokens
 
         text = next((b.text for b in response.content if b.type == "text"), "{}")
-        try:
-            data: dict = json.loads(text)
-        except json.JSONDecodeError:
+        data = parse_json_object(text)
+        if data is None:
             return [], used_model, in_tok, out_tok
         if data.get("ok", True):
             return [], used_model, in_tok, out_tok

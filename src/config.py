@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import time
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,21 +24,22 @@ class Settings(BaseSettings):
     # Storage
     storage_mode: str = "local"
     local_content_dir: str = "./test_content/"
-    aws_s3_bucket: Optional[str] = None
+    media_dir: str = "./media/"
+    aws_s3_bucket: str | None = None
     aws_region: str = "us-east-1"
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
 
     # Database
     database_url: str = "postgresql://pipeline:pipeline@localhost:5433/pipeline"
 
     # LinkedIn
-    linkedin_client_id: Optional[str] = None
-    linkedin_client_secret: Optional[str] = None
-    linkedin_access_token: Optional[str] = None
-    linkedin_refresh_token: Optional[str] = None
-    linkedin_token_expires_at: Optional[str] = None
-    linkedin_profile_urn: Optional[str] = None
+    linkedin_client_id: str | None = None
+    linkedin_client_secret: str | None = None
+    linkedin_access_token: str | None = None
+    linkedin_refresh_token: str | None = None
+    linkedin_token_expires_at: str | None = None
+    linkedin_profile_urn: str | None = None
 
     # LLM
     anthropic_api_key: str
@@ -58,13 +58,17 @@ class Settings(BaseSettings):
 
     # Approval integrations
     google_sheets_credentials_file: str = "./credentials.json"
-    google_sheet_id: Optional[str] = None
-    slack_webhook_url: Optional[str] = None
+    google_sheet_id: str | None = None
+    slack_webhook_url: str | None = None
 
     # API / FastAPI
-    api_key: Optional[str] = None
+    api_key: str | None = None
     cors_origins: str = "*"
     scheduler_poll_interval_s: int = 60
+
+    # Dashboard UI
+    ui_enabled: bool = True
+    log_buffer_size: int = 2000
 
     # ---- Validators --------------------------------------------------------
 

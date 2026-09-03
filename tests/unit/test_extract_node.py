@@ -7,7 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.models.post import Post
+from src.pipeline.nodes import extract as extract_mod
 from src.pipeline.nodes.extract import extract_node
+
+
+@pytest.fixture(autouse=True)
+def _no_db_logging(monkeypatch):
+    """extract_node calls log_event(); stub it so tests never touch a real DB."""
+    monkeypatch.setattr(extract_mod, "log_event", AsyncMock())
 
 
 def _patched_session(existing_post: Post | None = None):

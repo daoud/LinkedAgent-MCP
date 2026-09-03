@@ -122,6 +122,25 @@ curl -s http://localhost:8000/health      # {"status":"ok","database":"ok"}
 
 Leave this running. All commands below hit `http://localhost:8000`.
 
+### The dashboard (recommended)
+
+Open **http://localhost:8000** in a browser. Everything below can be done from
+the UI instead of curl:
+
+| Tab | What it does |
+|-----|--------------|
+| **Overview** | Live counts, month cost vs budget, token-expiry badge, config summary. |
+| **Compose** | Write content, pick a tone, click a starter template, drag in an image, toggle dry-run, hit *Generate & run* — then watch the live status. |
+| **Posts** | Filter by status; open any post to see raw + draft, **edit the exact final text**, approve/reject, retry (dry or live), open on LinkedIn, view its event timeline. |
+| **Approvals** | Every post waiting for a human — approve & publish or reject in one click. |
+| **Prompt Studio** | Edit the Claude rewrite prompt (`{content}` / `{tone}`); save = new version + activate. Roll back to any version. |
+| **Logs** | Live tail of everything — pipeline, API, scheduler, HTTP, Anthropic, Slack. Filter by level / text. |
+| **Ops** | Buttons for `make migrate`, seed template, check token expiry, production checklist, health, LinkedIn auth URL. Output streamed to the console panel. |
+
+The dashboard is served by the same FastAPI process; no separate build or
+install. If `API_KEY` is set, paste it into the field at the bottom of the
+sidebar (stored in your browser only).
+
 > `API_KEY` is unset by default, so no auth header is needed. If you set it,
 > add `-H "X-API-Key: <value>"` to every non-public request.
 

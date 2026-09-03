@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
 
 import anthropic
+
+from src.intelligence.jsonutil import parse_json_object
 
 # Regex patterns for detecting common prompt-injection attempts
 _INJECTION_PATTERNS = [
@@ -72,9 +73,8 @@ class Sanitizer:
         )
 
         text = next((b.text for b in response.content if b.type == "text"), "{}")
-        try:
-            data: dict = json.loads(text)
-        except json.JSONDecodeError:
+        data = parse_json_object(text)
+        if data is None:
             # Fail closed: an unparseable scanner response could itself be a
             # sign of a successful injection against the scanner, so don't
             # let unscanned content pass through.

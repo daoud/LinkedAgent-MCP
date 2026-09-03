@@ -10,7 +10,10 @@ from starlette.responses import JSONResponse
 # scrape endpoint meant for unauthenticated Prometheus access; /metrics
 # returns business data (post counts, cumulative LLM spend) and should stay
 # behind the API key like every other route.
-_PUBLIC_PATHS = {"/health", "/prometheus", "/docs", "/openapi.json", "/redoc"}
+_PUBLIC_PATHS = {"/health", "/prometheus", "/docs", "/openapi.json", "/redoc", "/"}
+# The dashboard shell + its static assets load without a key; the JS then
+# attaches X-API-Key (from the browser) to every /api/* call it makes.
+_PUBLIC_PREFIXES = ("/assets/",)
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
@@ -19,7 +22,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         self._api_key = api_key
 
     async def dispatch(self, request: Request, call_next):
-        if self._api_key and request.url.path not in _PUBLIC_PATHS:
+        path = request.url.path
+        is_public = path in _PUBLIC_PATHS or path.startswith(_PUBLIC_PREFIXES)
+        if self._api_key and not is_public:
             provided = request.headers.get("X-API-Key", "")
             if not hmac.compare_digest(provided, self._api_key):
                 return JSONResponse(

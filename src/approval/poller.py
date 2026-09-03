@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,8 @@ from src.approval.sheets_client import SheetsClient
 from src.approval.slack_notifier import SlackNotifier
 from src.config import Settings, get_settings
 from src.models.approval import Approval
+
+_log = logging.getLogger("pipeline")
 
 
 class ApprovalPoller:
@@ -19,7 +21,7 @@ class ApprovalPoller:
         session: AsyncSession,
         sheets: SheetsClient,
         notifier: SlackNotifier,
-        settings: Optional[Settings] = None,
+        settings: Settings | None = None,
     ) -> None:
         self._session = session
         self._sheets = sheets
@@ -53,7 +55,7 @@ class ApprovalPoller:
                 await self._notifier.notify_decision(approval)
                 actioned.append(approval)
             except Exception as exc:
-                print(f"[approval-poller] Failed to record decision for {entry.get('approval_id')}: {exc}")
+                _log.error("[approval-poller] failed to record decision for %s: %s", entry.get("approval_id"), exc)
                 continue
 
             try:
@@ -64,6 +66,6 @@ class ApprovalPoller:
                 # on every poll cycle forever.
                 self._sheets.update_decision(entry["approval_id"], f"{entry['decision']}:synced")
             except Exception as exc:
-                print(f"[approval-poller] Failed to sync back decision for {entry.get('approval_id')}: {exc}")
+                _log.warning("[approval-poller] failed to sync back decision for %s: %s", entry.get("approval_id"), exc)
 
         return actioned

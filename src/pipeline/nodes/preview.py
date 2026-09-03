@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlalchemy import select
 
 from src.config import get_settings
@@ -20,13 +22,16 @@ async def preview_node(state: PipelineState) -> dict:
         r = await session.execute(select(Post).where(Post.id == state["post_id"]))
         post = r.scalar_one_or_none()
     text = (post.transformed_text if post else None) or state["transformed_text"]
+    image_path = (post.image_path if post else None) or state.get("image_path")
+    has_image = bool(image_path and Path(image_path).is_file())
 
     if not settings.linkedin_profile_urn:
         preview = {"dry_run": True, "preview": text[:150], "char_count": len(text)}
-        return {"preview_result": preview, "transformed_text": text}
+    else:
+        auth = LinkedInAuth.from_settings(settings)
+        client = LinkedInClient(auth=auth, profile_urn=settings.linkedin_profile_urn)
+        preview = client.publish(text, dry_run=True)
 
-    auth = LinkedInAuth.from_settings(settings)
-    client = LinkedInClient(auth=auth, profile_urn=settings.linkedin_profile_urn)
-    preview = client.publish(text, dry_run=True)
-
+    preview["has_image"] = has_image
+    preview["char_count"] = len(text)
     return {"preview_result": preview, "transformed_text": text}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkedIn Pipeline — Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a66c2'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial'%3Ein%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">in</span>
+      <div><b>Auto-Publisher</b><small>pipeline dashboard</small></div>
+    </div>
+    <nav id="nav">
+      <a data-view="overview" class="active"><i>▪</i> Overview</a>
+      <a data-view="compose"><i>✎</i> Compose</a>
+      <a data-view="posts"><i>▤</i> Posts</a>
+      <a data-view="approvals"><i>✔</i> Approvals <span class="badge" id="nav-approvals" hidden>0</span></a>
+      <a data-view="prompt"><i>❝</i> Prompt Studio</a>
+      <a data-view="logs"><i>≡</i> Logs</a>
+      <a data-view="ops"><i>⚙</i> Ops</a>
+    </nav>
+    <div class="side-foot">
+      <label class="keyrow">API key
+        <input id="api-key" type="password" placeholder="only if API_KEY is set" autocomplete="off">
+      </label>
+      <div class="status-line">
+        <span id="dot-db" class="dot"></span> DB
+        <span id="dot-token" class="dot"></span> <span id="token-label">token</span>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="view" class="view"></div>
+  </main>
+</div>
+
+<div id="drawer" class="drawer" hidden>
+  <div class="drawer-back"></div>
+  <div class="drawer-panel" id="drawer-panel"></div>
+</div>
+
+<div id="toasts"></div>
+
+<template id="tpl-stat">
+  <div class="stat"><div class="stat-val"></div><div class="stat-label"></div></div>
+</template>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
 from src.database import AsyncSessionLocal
 from src.models.post import Post
+from src.observability.log_store import log_event
 from src.pipeline.state import PipelineState
 
 
@@ -37,10 +38,19 @@ async def finalize_node(state: PipelineState) -> dict:
             post.status = "approved"
         else:
             post.status = "published"
-            post.published_at = post.published_at or datetime.now(timezone.utc)
+            post.published_at = post.published_at or datetime.now(UTC)
             if linkedin_post_id:
                 post.linkedin_post_id = linkedin_post_id
 
+        final_status = post.status
         await session.commit()
+
+    lvl = "error" if final_status == "failed" else "info"
+    msg = f"Pipeline finished — status={final_status}"
+    if state.get("image_warning"):
+        msg += f" (note: {state['image_warning']})"
+    if state.get("error"):
+        msg += f" — {state.get('error')}"
+    await log_event(lvl, msg, node="finalize", post_id=post_id)
 
     return {}

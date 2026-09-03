@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -13,6 +14,8 @@ try:
 except ImportError:  # langgraph < 0.2
     from langgraph.pregel import Command  # type: ignore[assignment]
 
+_log = logging.getLogger("pipeline")
+
 
 async def resume_pipeline_thread(graph, thread_id: str, resume_value=True) -> None:
     """Resume a graph paused at any interrupt() call on the given thread_id."""
@@ -21,7 +24,7 @@ async def resume_pipeline_thread(graph, thread_id: str, resume_value=True) -> No
         async for _ in graph.astream(Command(resume=resume_value), config=config):
             pass
     except Exception as exc:
-        print(f"[pipeline] Resume error for thread {thread_id}: {exc}")
+        _log.error("Resume error for thread %s: %s", thread_id, exc)
 
 
 async def resume_pipeline_for_approval(

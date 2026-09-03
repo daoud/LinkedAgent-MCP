@@ -37,9 +37,15 @@ cp .env.example .env          # Edit with your credentials
 make up                       # Start PostgreSQL via Docker Compose
 make migrate                  # Run Alembic migrations
 make seed                     # Insert default prompt template
-make dev                      # Start FastAPI dev server
+make dev                      # Start FastAPI dev server + dashboard
 make test                     # Run test suite
 ```
+
+Then open **http://localhost:8000** for the dashboard — compose posts, upload
+images, approve/reject, edit drafts, manage the prompt template, watch a live
+log stream, and run ops scripts (migrate / seed / token check / checklist)
+without leaving the browser. The JSON API lives under `/api/*`; `/docs` has the
+OpenAPI reference.
 
 ## Development Phases
 
