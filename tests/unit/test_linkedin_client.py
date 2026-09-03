@@ -121,18 +121,27 @@ def test_get_profile_raises_on_error():
 
 @respx.mock
 def test_delete_post_returns_true_on_204():
-    respx.delete("https://api.linkedin.com/v2/ugcPosts/urn:li:ugcPost:1").mock(
+    # the URN's colons are percent-encoded into the path
+    respx.delete("https://api.linkedin.com/v2/ugcPosts/urn%3Ali%3AugcPost%3A1").mock(
         return_value=httpx.Response(204)
     )
     assert _make_client().delete_post("urn:li:ugcPost:1") is True
 
 
 @respx.mock
-def test_delete_post_returns_false_on_404():
+def test_delete_post_treats_404_as_already_gone():
     respx.delete("https://api.linkedin.com/v2/ugcPosts/missing").mock(
         return_value=httpx.Response(404)
     )
-    assert _make_client().delete_post("missing") is False
+    assert _make_client().delete_post("missing") is True
+
+
+@respx.mock
+def test_delete_post_returns_false_on_500():
+    respx.delete("https://api.linkedin.com/v2/ugcPosts/x").mock(
+        return_value=httpx.Response(500)
+    )
+    assert _make_client().delete_post("x") is False
 
 
 # ---- payload structure -----------------------------------------------------

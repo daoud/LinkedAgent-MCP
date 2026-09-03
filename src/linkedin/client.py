@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.parse
 from typing import Optional
 
 import httpx
@@ -144,13 +145,18 @@ class LinkedInClient:
     # ---- delete ------------------------------------------------------------
 
     def delete_post(self, post_id: str) -> bool:
-        """Delete a post by LinkedIn post ID. Returns True on success."""
+        """Delete a post by its LinkedIn URN (e.g. urn:li:share:123). True on success.
+
+        The URN goes in the path, so its colons must be percent-encoded; LinkedIn
+        replies 204 No Content on success and 404 if it is already gone.
+        """
+        encoded = urllib.parse.quote(post_id, safe="")
         response = httpx.delete(
-            f"{_BASE_URL}/ugcPosts/{post_id}",
+            f"{_BASE_URL}/ugcPosts/{encoded}",
             headers=self._headers(),
             timeout=self._timeout,
         )
-        return response.status_code in (200, 204)
+        return response.status_code in (200, 204, 404)
 
     # ---- private -----------------------------------------------------------
 

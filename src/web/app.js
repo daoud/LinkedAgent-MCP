@@ -339,6 +339,17 @@
     }
     if (p.linkedin_url) actions.append(h("a", { class: "btn sm ghost", href: p.linkedin_url, target: "_blank" }, "View on LinkedIn ↗"));
     actions.append(h("button", { class: "btn sm ghost", onclick: () => { navigator.clipboard?.writeText(draft.value); toast("Copied"); } }, "Copy text"));
+    if (p.linkedin_post_id) actions.append(h("button", {
+      class: "btn sm err", onclick: async (e) => {
+        if (!confirm("Delete this post from LinkedIn? This cannot be undone.")) return;
+        e.target.disabled = true; e.target.textContent = "Deleting…";
+        try {
+          const r = await api(`/api/posts/${id}/delete-linkedin`, { method: "POST" });
+          toast("Deleted from LinkedIn", "ok");
+          openPost(id);
+        } catch (err) { toast(err.message, "err"); e.target.disabled = false; e.target.textContent = "Delete from LinkedIn"; }
+      }
+    }, "Delete from LinkedIn"));
 
     const tl = h("div", { class: "timeline" });
     (d.logs || []).forEach((l) => tl.append(h("div", { class: "ev " + l.level },

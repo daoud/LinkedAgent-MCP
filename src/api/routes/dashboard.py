@@ -30,6 +30,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.config import get_settings
 from src.database import AsyncSessionLocal
 from src.linkedin.auth import LinkedInAuth
+from src.linkedin.client import LinkedInClient
 from src.models.approval import Approval
 from src.models.content_upload import ContentUpload
 from src.models.llm_cost import LLMCost
@@ -391,6 +392,48 @@ async def post_decision(post_id: uuid.UUID, request: Request, background_tasks: 
         return _ok(approval_id=str(approval_id), decision=decision)
     except SQLAlchemyError as exc:
         return _err(f"could not record decision: {exc}")
+
+
+@router.post("/posts/{post_id}/delete-linkedin")
+async def delete_from_linkedin(post_id: uuid.UUID) -> Any:
+    """Delete a published post from LinkedIn and clear its id on the row."""
+    settings = get_settings()
+    try:
+        async with AsyncSessionLocal() as session:
+            p = (
+                await session.execute(select(Post).where(Post.id == post_id))
+            ).scalar_one_or_none()
+            if p is None:
+                return _err("post not found", status=404)
+            urn = p.linkedin_post_id
+        if not urn:
+            return _err("this post has no LinkedIn id — nothing to delete", status=400)
+        if not settings.linkedin_access_token:
+            return _err("LinkedIn is not configured", status=400)
+
+        auth = LinkedInAuth.from_settings(settings)
+        client = LinkedInClient(auth=auth, profile_urn=settings.linkedin_profile_urn or "urn:li:person:unknown")
+        try:
+            ok = await asyncio.to_thread(client.delete_post, urn)
+        except Exception as exc:  # noqa: BLE001
+            await log_event("error", f"LinkedIn delete failed for {urn}: {exc}", node="dashboard", post_id=post_id)
+            return _err(f"LinkedIn API error: {exc}")
+        if not ok:
+            return _err("LinkedIn rejected the delete — the post may still be live")
+
+        async with AsyncSessionLocal() as session:
+            p = (
+                await session.execute(select(Post).where(Post.id == post_id))
+            ).scalar_one_or_none()
+            if p is not None:
+                p.status = "rejected"
+                p.last_error = f"Deleted from LinkedIn via dashboard ({urn})"
+                p.linkedin_post_id = None
+                await session.commit()
+        await log_event("info", f"Deleted from LinkedIn: {urn}", node="dashboard", post_id=post_id)
+        return _ok(deleted=urn)
+    except SQLAlchemyError as exc:
+        return _err(f"database error: {exc}")
 
 
 # ---------------------------------------------------------------------------
