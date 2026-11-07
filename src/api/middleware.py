@@ -27,7 +27,5 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if self._api_key and not is_public:
             provided = request.headers.get("X-API-Key", "")
             if not hmac.compare_digest(provided, self._api_key):
-                return JSONResponse(
-                    {"detail": "Invalid or missing API key"}, status_code=401
-                )
+                return JSONResponse({"detail": "Invalid or missing API key"}, status_code=401)
         return await call_next(request)

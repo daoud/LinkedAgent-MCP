@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -19,10 +18,10 @@ _HEADER = ["approval_id", "post_id", "preview", "scheduled_at", "decision", "dec
 class SheetsClient:
     """Thin wrapper around gspread for the approval sheet."""
 
-    def __init__(self, settings: Optional[Settings] = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
-        self._gc: Optional[gspread.Client] = None
-        self._ws: Optional[gspread.Worksheet] = None
+        self._gc: gspread.Client | None = None
+        self._ws: gspread.Worksheet | None = None
 
     def _worksheet(self) -> gspread.Worksheet:
         if self._ws is not None:

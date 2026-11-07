@@ -10,7 +10,6 @@ from src.ingestion.content_extractor import (
     extract_from_bytes,
 )
 
-
 # ---- detect_mime -----------------------------------------------------------
 
 

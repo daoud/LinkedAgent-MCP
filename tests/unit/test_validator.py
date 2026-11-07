@@ -1,18 +1,16 @@
 """Unit tests for src/intelligence/validator.py — no real API calls."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
-from src.intelligence.validator import ValidationIssue, ValidationResult, Validator
-
+from src.intelligence.validator import Validator
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_client(ok: bool = True, issues: list[str] | None = None):
     payload = json.dumps({"ok": ok, "issues": issues or []})
@@ -33,6 +31,7 @@ def _validator(ok: bool = True, issues: list[str] | None = None) -> Validator:
 # ---------------------------------------------------------------------------
 # Structural rules (no LLM needed — tone_check bypassed by mock)
 # ---------------------------------------------------------------------------
+
 
 def test_valid_post_passes():
     v = _validator(ok=True)
@@ -98,6 +97,7 @@ def test_char_count_and_hashtag_count_returned():
 # ---------------------------------------------------------------------------
 # LLM tone check
 # ---------------------------------------------------------------------------
+
 
 def test_llm_tone_ok_no_extra_issues():
     v = _validator(ok=True)

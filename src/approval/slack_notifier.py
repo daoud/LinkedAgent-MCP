@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import httpx
 
 from src.config import Settings, get_settings
@@ -11,7 +9,7 @@ from src.models.approval import Approval
 class SlackNotifier:
     """Sends approval notifications to a Slack webhook."""
 
-    def __init__(self, settings: Optional[Settings] = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
 
     async def notify_pending(self, approval: Approval) -> None:

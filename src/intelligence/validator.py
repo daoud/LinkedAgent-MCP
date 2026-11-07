@@ -73,33 +73,43 @@ class Validator:
         forbidden = [w.lower() for w in self._rules.get("forbidden_words", [])]
 
         if char_count > max_chars:
-            issues.append(ValidationIssue(
-                "max_chars",
-                f"Post is {char_count} chars (limit {max_chars})",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "max_chars",
+                    f"Post is {char_count} chars (limit {max_chars})",
+                )
+            )
         if char_count < min_chars:
-            issues.append(ValidationIssue(
-                "min_chars",
-                f"Post is {char_count} chars (minimum {min_chars})",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "min_chars",
+                    f"Post is {char_count} chars (minimum {min_chars})",
+                )
+            )
         if len(hashtags) > max_hashtags:
-            issues.append(ValidationIssue(
-                "max_hashtags",
-                f"Too many hashtags: {len(hashtags)} (max {max_hashtags})",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "max_hashtags",
+                    f"Too many hashtags: {len(hashtags)} (max {max_hashtags})",
+                )
+            )
         if len(urls) > max_urls:
-            issues.append(ValidationIssue(
-                "max_urls",
-                f"Too many URLs: {len(urls)} (max {max_urls})",
-                severity="warning",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "max_urls",
+                    f"Too many URLs: {len(urls)} (max {max_urls})",
+                    severity="warning",
+                )
+            )
         post_text_lower = post_text.lower()
         for word in forbidden:
             if re.search(rf"(?<!\w){re.escape(word)}(?!\w)", post_text_lower):
-                issues.append(ValidationIssue(
-                    "forbidden_word",
-                    f"Forbidden phrase detected: {word!r}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        "forbidden_word",
+                        f"Forbidden phrase detected: {word!r}",
+                    )
+                )
 
         model = ""
         input_tokens = 0
@@ -138,7 +148,6 @@ class Validator:
         if data.get("ok", True):
             return [], used_model, in_tok, out_tok
         issues = [
-            ValidationIssue("tone", msg, severity="warning")
-            for msg in data.get("issues", [])
+            ValidationIssue("tone", msg, severity="warning") for msg in data.get("issues", [])
         ]
         return issues, used_model, in_tok, out_tok

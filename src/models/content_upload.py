@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import BigInteger, DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,26 +13,26 @@ from src.models.base import Base
 class ContentUpload(Base):
     __tablename__ = "content_uploads"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_name: Mapped[str] = mapped_column(Text, nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(16), nullable=False)  # cloud | local
-    mime_type: Mapped[Optional[str]] = mapped_column(Text)
-    file_type: Mapped[str] = mapped_column(String(32), nullable=False)  # document|image|markdown|text
+    mime_type: Mapped[str | None] = mapped_column(Text)
+    file_type: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )  # document|image|markdown|text
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    external_id: Mapped[Optional[str]] = mapped_column(Text)  # e.g. Google Drive file id
-    source_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
-    file_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger)
+    external_id: Mapped[str | None] = mapped_column(Text)  # e.g. Google Drive file id
+    source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="pending"
     )  # pending|processing|published|failed|skipped
-    error_message: Mapped[Optional[str]] = mapped_column(Text)
-    uploaded_at: Mapped[Optional[datetime]] = mapped_column(
+    error_message: Mapped[str | None] = mapped_column(Text)
+    uploaded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

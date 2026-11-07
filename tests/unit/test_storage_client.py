@@ -1,6 +1,5 @@
 """Unit tests for src/ingestion/storage_client.py — no DB, no AWS required."""
 
-import pytest
 
 from src.ingestion.storage_client import LocalStorageClient
 
@@ -62,7 +61,7 @@ def test_delete_missing_is_noop(tmp_path):
 
 def test_base_dir_created_automatically(tmp_path):
     nested = tmp_path / "a" / "b" / "c"
-    client = LocalStorageClient(str(nested))
+    LocalStorageClient(str(nested))
     assert nested.exists()
 
 

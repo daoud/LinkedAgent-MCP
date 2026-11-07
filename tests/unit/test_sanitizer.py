@@ -1,16 +1,15 @@
 """Unit tests for src/intelligence/sanitizer.py — no real API calls."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.intelligence.sanitizer import MAX_CONTENT_CHARS, Sanitizer, _local_scan
-
 
 # ---------------------------------------------------------------------------
 # Local regex scanner
 # ---------------------------------------------------------------------------
+
 
 def test_local_scan_clean_content():
     assert _local_scan("This is a normal LinkedIn post about AI.") == []
@@ -35,9 +34,11 @@ def test_local_scan_detects_inst_marker():
 # Sanitizer with mocked Anthropic client
 # ---------------------------------------------------------------------------
 
+
 def _make_mock_client(safe: bool, reason: str = "ok", cleaned: str | None = None):
     """Build a minimal Anthropic client mock."""
     import json
+
     payload = json.dumps({"safe": safe, "reason": reason, "cleaned": cleaned or "content"})
     block = MagicMock()
     block.type = "text"
@@ -106,6 +107,7 @@ def test_llm_json_parse_error_fails_closed():
 def test_thinking_blocks_ignored():
     """Thinking-type blocks in response are filtered out."""
     import json
+
     thinking_block = MagicMock()
     thinking_block.type = "thinking"
     thinking_block.thinking = "Let me analyse..."

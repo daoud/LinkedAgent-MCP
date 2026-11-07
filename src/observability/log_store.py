@@ -57,7 +57,11 @@ class LogRing:
                 continue
             if min_level and _LEVEL_ORDER.get(r["level"], 20) < min_level:
                 continue
-            if needle and needle not in r["message"].lower() and needle not in r.get("logger", "").lower():
+            if (
+                needle
+                and needle not in r["message"].lower()
+                and needle not in r.get("logger", "").lower()
+            ):
                 continue
             out.append(r)
         return out[-limit:]

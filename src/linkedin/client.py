@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import urllib.parse
-from typing import Optional
 
 import httpx
 
@@ -23,7 +22,7 @@ class LinkedInClient:
         self,
         auth: LinkedInAuth,
         profile_urn: str,
-        rate_limiter: Optional[RateLimiter] = None,
+        rate_limiter: RateLimiter | None = None,
         timeout: float = 30.0,
     ) -> None:
         self.auth = auth
@@ -36,7 +35,7 @@ class LinkedInClient:
     def publish(
         self,
         text: str,
-        media_urns: Optional[list[str]] = None,
+        media_urns: list[str] | None = None,
         dry_run: bool = True,
     ) -> dict:
         """Publish a text post to LinkedIn.
@@ -124,9 +123,9 @@ class LinkedInClient:
         reg_data = reg.json()
 
         upload_mechanism = reg_data["value"]["uploadMechanism"]
-        upload_url = upload_mechanism[
-            "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
-        ]["uploadUrl"]
+        upload_url = upload_mechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"][
+            "uploadUrl"
+        ]
         asset_urn: str = reg_data["value"]["asset"]
 
         # Step 2 — upload binary
@@ -167,27 +166,19 @@ class LinkedInClient:
             "X-Restli-Protocol-Version": "2.0.0",
         }
 
-    def _build_ugc_payload(
-        self, text: str, media_urns: Optional[list[str]]
-    ) -> dict:
+    def _build_ugc_payload(self, text: str, media_urns: list[str] | None) -> dict:
         share_content: dict = {
             "shareCommentary": {"text": text},
             "shareMediaCategory": "NONE",
         }
         if media_urns:
             share_content["shareMediaCategory"] = "IMAGE"
-            share_content["media"] = [
-                {"status": "READY", "media": urn} for urn in media_urns
-            ]
+            share_content["media"] = [{"status": "READY", "media": urn} for urn in media_urns]
         return {
             "author": self.profile_urn,
             "lifecycleState": "PUBLISHED",
-            "specificContent": {
-                "com.linkedin.ugc.ShareContent": share_content
-            },
-            "visibility": {
-                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-            },
+            "specificContent": {"com.linkedin.ugc.ShareContent": share_content},
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
         }
 
 

@@ -1,4 +1,5 @@
 """Unit tests for the dashboard API — helpers + defensive-error behaviour."""
+
 from __future__ import annotations
 
 import uuid
@@ -78,7 +79,9 @@ def test_overview_survives_db_failure():
 
 
 def test_logs_endpoint_reads_ring():
-    dashboard.RING.add({"ts": "2026-01-01T00:00:00Z", "level": "info", "logger": "t", "message": "hello ring"})
+    dashboard.RING.add(
+        {"ts": "2026-01-01T00:00:00Z", "level": "info", "logger": "t", "message": "hello ring"}
+    )
     with TestClient(_app()) as c:
         r = c.get("/api/logs?limit=50")
     assert r.status_code == 200

@@ -138,9 +138,7 @@ def test_delete_post_treats_404_as_already_gone():
 
 @respx.mock
 def test_delete_post_returns_false_on_500():
-    respx.delete("https://api.linkedin.com/v2/ugcPosts/x").mock(
-        return_value=httpx.Response(500)
-    )
+    respx.delete("https://api.linkedin.com/v2/ugcPosts/x").mock(return_value=httpx.Response(500))
     assert _make_client().delete_post("x") is False
 
 

@@ -119,7 +119,7 @@ class Settings(BaseSettings):
         url = self.database_url
         for prefix in ("postgresql://", "postgresql+psycopg2://", "postgresql+psycopg://"):
             if url.startswith(prefix):
-                return "postgresql+asyncpg://" + url[len(prefix):]
+                return "postgresql+asyncpg://" + url[len(prefix) :]
         return url
 
     @property
@@ -127,7 +127,7 @@ class Settings(BaseSettings):
         url = self.database_url
         for prefix in ("postgresql+asyncpg://", "postgresql+psycopg3://"):
             if url.startswith(prefix):
-                return "postgresql://" + url[len(prefix):]
+                return "postgresql://" + url[len(prefix) :]
         return url
 
 

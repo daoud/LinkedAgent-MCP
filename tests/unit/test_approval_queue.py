@@ -1,25 +1,26 @@
 """Unit tests for src/approval/queue.py, sheets_client.py, slack_notifier.py, poller.py."""
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 import respx
-import httpx
 
+from src.approval.poller import ApprovalPoller
 from src.approval.queue import ApprovalQueue
 from src.approval.slack_notifier import SlackNotifier
-from src.approval.poller import ApprovalPoller
 from src.config import Settings
 from src.models.approval import Approval
 from src.models.post import Post
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _settings(**kwargs) -> Settings:
     base = dict(
@@ -53,7 +54,7 @@ def _approval(
     a.post_id = post_id or uuid.uuid4()
     a.preview_text = "Hello LinkedIn!"
     a.decision = decision
-    a.expires_at = expires_at or (datetime.now(timezone.utc) + timedelta(hours=24))
+    a.expires_at = expires_at or (datetime.now(UTC) + timedelta(hours=24))
     return a
 
 
@@ -69,6 +70,7 @@ def _mock_session() -> AsyncMock:
 # ---------------------------------------------------------------------------
 # ApprovalQueue.enqueue
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_enqueue_creates_approval_and_sets_status():
@@ -89,10 +91,10 @@ async def test_enqueue_creates_approval_and_sets_status():
 async def test_enqueue_sets_expires_at_in_future():
     session = _mock_session()
     post = _post()
-    before = datetime.now(timezone.utc)
+    before = datetime.now(UTC)
     q = ApprovalQueue(session, _settings(approval_timeout_h=2))
     approval = await q.enqueue(post)
-    after = datetime.now(timezone.utc)
+    after = datetime.now(UTC)
 
     assert approval.expires_at > before
     assert approval.expires_at < after + timedelta(hours=3)
@@ -111,6 +113,7 @@ async def test_enqueue_preview_truncated_to_content():
 # ---------------------------------------------------------------------------
 # ApprovalQueue.get_pending
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_pending_returns_list_from_db():
@@ -138,10 +141,11 @@ async def test_get_pending_returns_empty_when_none():
 # ApprovalQueue.expire_timed_out
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_expire_timed_out_marks_decision_timeout():
     session = _mock_session()
-    past = datetime.now(timezone.utc) - timedelta(hours=1)
+    past = datetime.now(UTC) - timedelta(hours=1)
     a = _approval(decision="pending", expires_at=past)
     result = MagicMock()
     result.scalars.return_value.all.return_value = [a]
@@ -174,6 +178,7 @@ async def test_expire_timed_out_flushes_only_when_items_found():
 # ---------------------------------------------------------------------------
 # ApprovalQueue.record_decision
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_record_decision_approved():
@@ -210,6 +215,7 @@ async def test_record_decision_rejected():
 # SlackNotifier
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_notify_pending_posts_to_webhook():
     s = _settings(slack_webhook_url="https://hooks.slack.com/test")
@@ -217,9 +223,7 @@ async def test_notify_pending_posts_to_webhook():
     a = _approval()
 
     with respx.mock:
-        route = respx.post("https://hooks.slack.com/test").mock(
-            return_value=httpx.Response(200)
-        )
+        route = respx.post("https://hooks.slack.com/test").mock(return_value=httpx.Response(200))
         await notifier.notify_pending(a)
     assert route.called
 
@@ -241,9 +245,7 @@ async def test_notify_decision_approved_posts_to_webhook():
     a.decided_by = "alice"
 
     with respx.mock:
-        route = respx.post("https://hooks.slack.com/test").mock(
-            return_value=httpx.Response(200)
-        )
+        route = respx.post("https://hooks.slack.com/test").mock(return_value=httpx.Response(200))
         await notifier.notify_decision(a)
     assert route.called
 
@@ -259,6 +261,7 @@ async def test_notify_decision_skips_when_no_webhook():
 # ---------------------------------------------------------------------------
 # ApprovalPoller
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_poll_once_processes_sheet_decisions():

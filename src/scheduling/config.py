@@ -68,8 +68,13 @@ async def get_row(session: AsyncSession) -> ScheduleConfig:
     if row is None:
         d = _defaults()
         row = ScheduleConfig(
-            id=1, slots=d["slots"], daily_limit=d["daily_limit"], weekdays=d["weekdays"],
-            auto_publish=d["auto_publish"], require_approval=d["require_approval"], enabled=True,
+            id=1,
+            slots=d["slots"],
+            daily_limit=d["daily_limit"],
+            weekdays=d["weekdays"],
+            auto_publish=d["auto_publish"],
+            require_approval=d["require_approval"],
+            enabled=True,
         )
         session.add(row)
         await session.flush()

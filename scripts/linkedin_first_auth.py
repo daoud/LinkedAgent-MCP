@@ -19,13 +19,12 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+import httpx
 from dotenv import load_dotenv
 
-load_dotenv()
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import httpx
+load_dotenv()
 
 CALLBACK_PORT = 8080
 CALLBACK_URL = f"http://localhost:{CALLBACK_PORT}/auth/callback"
@@ -89,7 +88,7 @@ def run() -> None:
     )
     auth_url = f"{AUTH_URL}?{auth_params}"
 
-    print(f"\nOpening browser for LinkedIn authorization…")
+    print("\nOpening browser for LinkedIn authorization…")
     print(f"If the browser does not open automatically, visit:\n  {auth_url}\n")
     webbrowser.open(auth_url)
 

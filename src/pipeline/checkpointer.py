@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
@@ -17,7 +17,7 @@ def _psycopg3_url(database_url: str) -> str:
         "postgresql+psycopg2://",
     ):
         if database_url.startswith(prefix):
-            return "postgresql://" + database_url[len(prefix):]
+            return "postgresql://" + database_url[len(prefix) :]
     return database_url
 
 

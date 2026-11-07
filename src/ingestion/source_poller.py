@@ -45,7 +45,9 @@ async def poll_sources() -> int:
 
     async with AsyncSessionLocal() as session:
         sources = list(
-            (await session.execute(select(ContentSource).where(ContentSource.enabled.is_(True)))).scalars()
+            (
+                await session.execute(select(ContentSource).where(ContentSource.enabled.is_(True)))
+            ).scalars()
         )
 
     for src in sources:
@@ -66,7 +68,10 @@ async def poll_sources() -> int:
 async def _poll_gdrive(src: ContentSource, settings) -> int:
     from src.ingestion.gdrive_source import GDriveSource  # noqa: PLC0415
 
-    creds = getattr(settings, "google_drive_credentials_file", None) or settings.google_sheets_credentials_file
+    creds = (
+        getattr(settings, "google_drive_credentials_file", None)
+        or settings.google_sheets_credentials_file
+    )
     if not Path(creds).is_file():
         raise FileNotFoundError(f"Google credentials file not found: {creds}")
 

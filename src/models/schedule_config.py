@@ -17,7 +17,9 @@ class ScheduleConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     slots: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-    weekdays: Mapped[list] = mapped_column(JSONB, nullable=False, default=lambda: [0, 1, 2, 3, 4, 5, 6])
+    weekdays: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=lambda: [0, 1, 2, 3, 4, 5, 6]
+    )
     active_from: Mapped[date | None] = mapped_column(Date)
     active_until: Mapped[date | None] = mapped_column(Date)
     auto_publish: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

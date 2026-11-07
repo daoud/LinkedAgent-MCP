@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,13 +12,13 @@ from src.models.post import Post
 
 
 class ApprovalQueue:
-    def __init__(self, session: AsyncSession, settings: Optional[Settings] = None) -> None:
+    def __init__(self, session: AsyncSession, settings: Settings | None = None) -> None:
         self._session = session
         self._settings = settings or get_settings()
 
     async def enqueue(self, post: Post) -> Approval:
         """Create an Approval record and set the post status to awaiting_approval."""
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=self._settings.approval_timeout_h)
+        expires_at = datetime.now(UTC) + timedelta(hours=self._settings.approval_timeout_h)
         approval = Approval(
             post_id=post.id,
             preview_text=post.transformed_text or "",
@@ -34,7 +33,7 @@ class ApprovalQueue:
 
     async def get_pending(self) -> list[Approval]:
         """Return all pending approvals that have not yet expired."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self._session.execute(
             select(Approval)
             .where(Approval.decision == "pending")
@@ -45,11 +44,9 @@ class ApprovalQueue:
 
     async def expire_timed_out(self) -> list[Approval]:
         """Mark past-deadline pending approvals as timeout and reject their posts."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self._session.execute(
-            select(Approval)
-            .where(Approval.decision == "pending")
-            .where(Approval.expires_at <= now)
+            select(Approval).where(Approval.decision == "pending").where(Approval.expires_at <= now)
         )
         approvals = list(result.scalars().all())
         for approval in approvals:
@@ -71,13 +68,11 @@ class ApprovalQueue:
         decided_by: str = "sheet",
     ) -> Approval:
         """Apply an approve/reject decision and update the linked post's status."""
-        result = await self._session.execute(
-            select(Approval).where(Approval.id == approval_id)
-        )
+        result = await self._session.execute(select(Approval).where(Approval.id == approval_id))
         approval = result.scalar_one()
         approval.decision = decision
         approval.decided_by = decided_by
-        approval.decided_at = datetime.now(timezone.utc)
+        approval.decided_at = datetime.now(UTC)
 
         new_post_status = "approved" if decision == "approved" else "rejected"
         await self._session.execute(

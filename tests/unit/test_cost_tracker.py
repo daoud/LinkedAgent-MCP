@@ -1,18 +1,19 @@
 """Unit tests for src/intelligence/cost_tracker.py — no DB required."""
+
 from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.intelligence.cost_tracker import CostTracker, calculate_cost
 
-
 # ---------------------------------------------------------------------------
 # calculate_cost (pure math — no DB)
 # ---------------------------------------------------------------------------
+
 
 def test_calculate_cost_opus_4_7():
     cost = calculate_cost("claude-opus-4-7", input_tokens=1_000_000, output_tokens=0)
@@ -31,7 +32,6 @@ def test_calculate_cost_sonnet():
 
 def test_calculate_cost_haiku():
     cost = calculate_cost("claude-haiku-4-5", input_tokens=100_000, output_tokens=100_000)
-    expected = Decimal("0.6") / Decimal("1")  # (0.1 + 0.5)
     assert cost == Decimal("0.000600") * Decimal("1000")
 
 
@@ -61,6 +61,7 @@ def test_calculate_cost_zero_tokens():
 # ---------------------------------------------------------------------------
 # CostTracker.record (mocked async session)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_record_adds_row_to_session():
@@ -106,6 +107,7 @@ async def test_record_calculates_correct_cost():
 # ---------------------------------------------------------------------------
 # CostTracker.get_monthly_total + is_over_budget (mocked DB queries)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_monthly_total_returns_sum():

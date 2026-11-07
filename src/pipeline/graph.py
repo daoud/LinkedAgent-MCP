@@ -17,6 +17,7 @@ from src.pipeline.state import PipelineState
 
 # ---- routing helpers -------------------------------------------------------
 
+
 def _route_dedup(state: PipelineState) -> str:
     return "finalize" if state.get("error") else "sanitize"
 
@@ -52,6 +53,7 @@ def _route_approve(state: PipelineState) -> str:
 
 # ---- graph factory ---------------------------------------------------------
 
+
 def build_graph(checkpointer=None):
     """Build and compile the LangGraph pipeline.
 
@@ -76,11 +78,21 @@ def build_graph(checkpointer=None):
 
     g.add_edge("extract", "dedup")
     g.add_conditional_edges("dedup", _route_dedup, {"sanitize": "sanitize", "finalize": "finalize"})
-    g.add_conditional_edges("sanitize", _route_sanitize, {"transform": "transform", "finalize": "finalize"})
-    g.add_conditional_edges("transform", _route_transform, {"validate": "validate", "finalize": "finalize"})
-    g.add_conditional_edges("validate", _route_validate, {"schedule": "schedule", "finalize": "finalize"})
-    g.add_conditional_edges("schedule", _route_schedule, {"approve": "approve", "wait_for_slot": "wait_for_slot"})
-    g.add_conditional_edges("approve", _route_approve, {"wait_for_slot": "wait_for_slot", "finalize": "finalize"})
+    g.add_conditional_edges(
+        "sanitize", _route_sanitize, {"transform": "transform", "finalize": "finalize"}
+    )
+    g.add_conditional_edges(
+        "transform", _route_transform, {"validate": "validate", "finalize": "finalize"}
+    )
+    g.add_conditional_edges(
+        "validate", _route_validate, {"schedule": "schedule", "finalize": "finalize"}
+    )
+    g.add_conditional_edges(
+        "schedule", _route_schedule, {"approve": "approve", "wait_for_slot": "wait_for_slot"}
+    )
+    g.add_conditional_edges(
+        "approve", _route_approve, {"wait_for_slot": "wait_for_slot", "finalize": "finalize"}
+    )
     g.add_edge("wait_for_slot", "preview")
     g.add_edge("preview", "publish")
     g.add_edge("publish", "finalize")

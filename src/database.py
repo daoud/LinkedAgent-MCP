@@ -21,7 +21,7 @@ def _async_url() -> str:
     raw = os.getenv("DATABASE_URL", _DEFAULT_URL)
     for prefix in ("postgresql://", "postgresql+psycopg2://", "postgresql+psycopg://"):
         if raw.startswith(prefix):
-            return "postgresql+asyncpg://" + raw[len(prefix):]
+            return "postgresql+asyncpg://" + raw[len(prefix) :]
     return raw
 
 

@@ -1,11 +1,10 @@
 """Unit tests for Phase 8 — FastAPI API (middleware, health, pipeline routes)."""
+
 from __future__ import annotations
 
-import io
 import uuid
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,15 +14,16 @@ from fastapi.testclient import TestClient
 
 from src.api.middleware import APIKeyMiddleware
 from src.api.routes import health, pipeline
+from src.api.routes.pipeline import _classify_file_type
 from src.database import get_db
 from src.models.approval import Approval
 from src.models.content_upload import ContentUpload
 from src.models.post import Post
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_session(scalar=None, fetchall=None, scalars_all=None):
     """Return a mock AsyncSession whose execute() results are configurable."""
@@ -61,6 +61,7 @@ def _build_app(graph=None, api_key=None):
 # ---------------------------------------------------------------------------
 # APIKeyMiddleware
 # ---------------------------------------------------------------------------
+
 
 class TestAPIKeyMiddleware:
     def test_no_api_key_configured_allows_all_requests(self):
@@ -114,6 +115,7 @@ class TestAPIKeyMiddleware:
 # GET /health
 # ---------------------------------------------------------------------------
 
+
 class TestHealthEndpoint:
     def test_returns_ok_when_db_responds(self):
         app, _ = _build_app()
@@ -148,6 +150,7 @@ class TestHealthEndpoint:
 # ---------------------------------------------------------------------------
 # GET /metrics
 # ---------------------------------------------------------------------------
+
 
 class TestMetricsEndpoint:
     def test_returns_post_counts_and_cost(self):
@@ -198,6 +201,7 @@ class TestMetricsEndpoint:
 # POST /pipeline/trigger
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineTrigger:
     def test_returns_accepted_with_thread_id(self):
         upload_id = uuid.uuid4()
@@ -227,6 +231,7 @@ class TestPipelineTrigger:
 # ---------------------------------------------------------------------------
 # GET /pipeline/status/{post_id}
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineStatus:
     def _make_post(self, status: str = "processing") -> Post:
@@ -274,6 +279,7 @@ class TestPipelineStatus:
 # ---------------------------------------------------------------------------
 # POST /pipeline/upload
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineUpload:
     def test_accepts_text_file_and_returns_upload_id(self, tmp_path):
@@ -340,6 +346,7 @@ class TestPipelineUpload:
 # POST /pipeline/retry/{post_id}
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineRetry:
     def test_returns_accepted_and_new_thread_id(self):
         post = Post()
@@ -391,6 +398,7 @@ class TestPipelineRetry:
 # POST /pipeline/approve/{approval_id}
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineApprove:
     def _make_approval_and_post(self):
         approval = Approval()
@@ -406,18 +414,24 @@ class TestPipelineApprove:
         app, mock_graph = _build_app()
         mock_graph.astream.return_value = _async_iter([])
 
-        with patch("src.api.routes.pipeline.AsyncSessionLocal") as mock_session_factory:
-            session = AsyncMock()
-            # First execute: approval lookup; second: post lookup
-            result1 = MagicMock()
-            result1.scalar_one_or_none.return_value = approval
-            result2 = MagicMock()
-            result2.scalar_one.return_value = post
-            session.execute.side_effect = [result1, result2]
-            session.__aenter__ = AsyncMock(return_value=session)
-            session.__aexit__ = AsyncMock(return_value=None)
-            mock_session_factory.return_value = session
+        session = AsyncMock()
+        # First execute: approve route's approval lookup; second/third: the
+        # resume_pipeline_for_approval background task's own approval + post
+        # lookups (it opens its own session via src.pipeline.resume.AsyncSessionLocal).
+        result1 = MagicMock()
+        result1.scalar_one_or_none.return_value = approval
+        result2 = MagicMock()
+        result2.scalar_one_or_none.return_value = approval
+        result3 = MagicMock()
+        result3.scalar_one_or_none.return_value = post
+        session.execute.side_effect = [result1, result2, result3]
+        session.__aenter__ = AsyncMock(return_value=session)
+        session.__aexit__ = AsyncMock(return_value=None)
 
+        with (
+            patch("src.api.routes.pipeline.AsyncSessionLocal", return_value=session),
+            patch("src.pipeline.resume.AsyncSessionLocal", return_value=session),
+        ):
             with TestClient(app) as client:
                 r = client.post(
                     f"/pipeline/approve/{approval.id}",
@@ -471,9 +485,6 @@ class TestPipelineApprove:
 # _classify_file_type (pure function)
 # ---------------------------------------------------------------------------
 
-from src.api.routes.pipeline import _classify_file_type
-
-
 class TestClassifyFileType:
     def test_pdf_mime(self):
         assert _classify_file_type("application/pdf", ".pdf") == "document"
@@ -497,6 +508,7 @@ class TestClassifyFileType:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 async def _async_iter_gen(items):
     for item in items:

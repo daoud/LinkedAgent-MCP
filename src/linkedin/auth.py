@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import os
-import time
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -27,8 +25,8 @@ class LinkedInAuth:
         client_id: str,
         client_secret: str,
         access_token: str,
-        refresh_token: Optional[str] = None,
-        token_expires_at: Optional[datetime] = None,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
@@ -39,12 +37,12 @@ class LinkedInAuth:
     # ---- factory -----------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "LinkedInAuth":
+    def from_env(cls) -> LinkedInAuth:
         """Build from environment variables (reads .env if present)."""
-        expires_at: Optional[datetime] = None
+        expires_at: datetime | None = None
         raw_ts = os.getenv("LINKEDIN_TOKEN_EXPIRES_AT")
         if raw_ts:
-            expires_at = datetime.fromtimestamp(float(raw_ts), tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(float(raw_ts), tz=UTC)
 
         return cls(
             client_id=os.getenv("LINKEDIN_CLIENT_ID", ""),
@@ -55,12 +53,12 @@ class LinkedInAuth:
         )
 
     @classmethod
-    def from_settings(cls, settings) -> "LinkedInAuth":
+    def from_settings(cls, settings) -> LinkedInAuth:
         """Build from a pydantic Settings instance."""
-        expires_at: Optional[datetime] = None
+        expires_at: datetime | None = None
         raw_ts = settings.linkedin_token_expires_at
         if raw_ts:
-            expires_at = datetime.fromtimestamp(float(raw_ts), tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(float(raw_ts), tz=UTC)
 
         return cls(
             client_id=settings.linkedin_client_id or "",
@@ -99,7 +97,7 @@ class LinkedInAuth:
         if "refresh_token" in data:
             self._refresh_token = data["refresh_token"]
         if "expires_in" in data:
-            self._token_expires_at = datetime.now(timezone.utc) + timedelta(
+            self._token_expires_at = datetime.now(UTC) + timedelta(
                 seconds=data["expires_in"]
             )
         return self._access_token
@@ -121,13 +119,13 @@ class LinkedInAuth:
         if self._token_expires_at is None:
             return False
         threshold = self._token_expires_at - timedelta(days=self.REFRESH_BEFORE_DAYS)
-        return datetime.now(timezone.utc) >= threshold
+        return datetime.now(UTC) >= threshold
 
-    def days_until_expiry(self) -> Optional[float]:
+    def days_until_expiry(self) -> float | None:
         """Return days remaining until expiry, or None if expiry is unknown."""
         if self._token_expires_at is None:
             return None
-        delta = self._token_expires_at - datetime.now(timezone.utc)
+        delta = self._token_expires_at - datetime.now(UTC)
         return delta.total_seconds() / 86_400
 
     @property

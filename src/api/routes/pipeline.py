@@ -133,9 +133,7 @@ async def upload_file(
     dest.write_bytes(file_bytes)
 
     thread_id = f"upload-{upload_id}"
-    background_tasks.add_task(
-        _run_pipeline, request.app.state.graph, upload_id, dry_run, thread_id
-    )
+    background_tasks.add_task(_run_pipeline, request.app.state.graph, upload_id, dry_run, thread_id)
     return {"status": "accepted", "upload_id": str(upload_id), "thread_id": thread_id}
 
 

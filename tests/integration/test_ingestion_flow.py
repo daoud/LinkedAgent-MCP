@@ -20,7 +20,7 @@ def test_ingest_txt_file(tmp_path):
     stored = client.upload(src)
 
     assert client.exists(stored)
-    data = client.download(stored)
+    client.download(stored)
     text, images = extract_content(Path(stored))
 
     assert content in text

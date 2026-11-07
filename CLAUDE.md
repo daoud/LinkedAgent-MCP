@@ -39,10 +39,12 @@ Content File → Storage → ContentReader → LangGraph Pipeline → LinkedIn A
                     ↕ PostgreSQL metadata at every step
 ```
 
-The LangGraph pipeline (`src/pipeline/graph.py`) wires 10 nodes in sequence:
-`extract → dedup → sanitize → transform → validate → schedule → approve → preview → publish → finalize`
+The LangGraph pipeline (`src/pipeline/graph.py`) wires 11 nodes:
+`extract → dedup → sanitize → transform → validate → schedule → [approve] → wait_for_slot → preview → publish → finalize`
 
-Each node lives in `src/pipeline/nodes/<name>.py` and receives/returns a `PipelineState` TypedDict (`src/pipeline/state.py`). The graph uses a PostgreSQL checkpointer (`src/pipeline/checkpointer.py`) for resumability — no Celery/Redis.
+`schedule` routes conditionally to `approve` or straight to `wait_for_slot` depending on the live `require_approval` flag (see Scheduling below); `approve` then routes to `wait_for_slot` or `finalize` (on reject/timeout). `wait_for_slot` interrupts the graph until the assigned slot time arrives, then resumes into `preview`.
+
+Each node lives in `src/pipeline/nodes/<name>.py` and receives/returns a `PipelineState` TypedDict (`src/pipeline/state.py`). The graph uses a PostgreSQL checkpointer (`src/pipeline/checkpointer.py`) for resumability — no Celery/Redis. `src/pipeline/resume.py` resumes an interrupted thread from either the manual `/pipeline/approve` route or the Sheets approval poller — it opens its **own** `AsyncSessionLocal` (separate from the route's), which matters when mocking DB access in tests that exercise the approve endpoint end-to-end.
 
 ### Settings singleton
 
@@ -69,15 +71,23 @@ When mocking in tests, use `AsyncMock` for `session` and `session.execute`, but 
 
 ### Scheduling + dedup
 
-`src/scheduling/scheduler.py` (`PostScheduler`) assigns posts to the next free `(date, time)` slot from `POST_SLOTS`, respects `DAILY_POST_LIMIT`, and rolls over to the next day when full. Slots are stored as naive local times in the configured `TIMEZONE`. `src/scheduling/dedup.py` computes SHA-256 hashes of content and checks the `post_hash` unique column on the `posts` table.
+`src/scheduling/scheduler.py` (`PostScheduler`) assigns posts to the next free `(date, time)` slot, respects the daily post limit, and rolls over to the next day when full. Slots are stored as naive local times in the configured `TIMEZONE`. `src/scheduling/dedup.py` computes SHA-256 hashes of content and checks the `post_hash` unique column on the `posts` table.
 
-### Storage
+Scheduling is runtime-configurable, not just env-driven: `src/scheduling/config.py` backs a single `ScheduleConfig` DB row (slots, daily limit, active weekdays/date range, `auto_publish`, `require_approval`, `enabled`) editable from the dashboard's Schedule tab. It seeds its defaults from `Settings` on first read, then `cached()` serves the last-loaded values without a DB round-trip for hot-path routing (e.g. the graph's `schedule`/`approve` conditional edges) — a background poll refreshes the cache, and every dashboard write refreshes it immediately.
+
+### Storage + content sources
 
 `src/ingestion/storage_client.py` defines an ABC (`StorageClient`) with `LocalStorageClient` and `S3StorageClient` implementations. `ContentReader` (`src/ingestion/content_reader.py`) composes storage + extractor into a single `read(path) → str` interface. Drop files into `test_content/` when `STORAGE_MODE=local`.
 
-### Database models (6 tables)
+Beyond the local folder watcher (`src/ingestion/local_watcher.py`, watchdog-based), `src/ingestion/gdrive_source.py` (`GDriveSource`) polls a Google Drive folder for new files, reusing the Sheets integration's service-account credentials with an added read-only Drive scope; `src/ingestion/source_poller.py` drives configured sources (tracked in the `content_sources` table) on an interval. Each Drive file is imported once, keyed by `content_uploads.external_id`.
 
-`posts`, `content_uploads`, `approvals`, `prompt_templates`, `llm_costs`, `logs` — all defined in `src/models/`. `Base` is in `src/models/base.py`. Alembic config is in `alembic.ini`; migrations live in `migrations/versions/`.
+### Dashboard UI
+
+`src/api/routes/ui.py` serves the static dashboard SPA; `src/api/routes/dashboard.py` (prefix `/api`) is its backing REST API — compose, post/approval CRUD, retry/publish/delete-from-LinkedIn actions, prompt templates, live logs, ops actions, and the Schedule tab's `/schedule`, `/schedule/queue`, `/sources*` endpoints. See `RUNBOOK.md` for the end-to-end walkthrough.
+
+### Database models (8 tables)
+
+`posts`, `content_uploads`, `approvals`, `prompt_templates`, `llm_costs`, `logs`, `content_sources`, `schedule_config` — all defined in `src/models/`. `Base` is in `src/models/base.py`. Alembic config is in `alembic.ini`; migrations live in `migrations/versions/` (currently 3 revisions — schema, post media/source columns, schedule config + sources).
 
 ## Phase completion status
 
@@ -95,3 +105,5 @@ When mocking in tests, use `AsyncMock` for `session` and `session.execute`, but 
 | 10 — Deployment (Dockerfile, CI, K8s) | ✅ complete |
 
 Development order is strict — complete each phase gate before starting the next. See `PROJECT_PLAN.md` for full task breakdown and `TASKS.md` for token budget rules.
+
+Post-Phase-10 additions (not in the original 28-task plan, built on top of the completed pipeline): the dashboard UI, the runtime-configurable scheduling engine (`ScheduleConfig`), the Google Drive content source, and the `wait_for_slot` graph node — see the sections above.

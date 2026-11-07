@@ -1,4 +1,5 @@
 """Unit tests for src/intelligence/jsonutil.parse_json_object."""
+
 from __future__ import annotations
 
 from src.intelligence.jsonutil import parse_json_object
@@ -14,7 +15,7 @@ def test_markdown_fenced():
 
 
 def test_fence_without_lang():
-    assert parse_json_object("```\n{\"ok\": true}\n```") == {"ok": True}
+    assert parse_json_object('```\n{"ok": true}\n```') == {"ok": True}
 
 
 def test_prose_around_object():

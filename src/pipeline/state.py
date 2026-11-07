@@ -7,12 +7,12 @@ from typing import TypedDict
 class PipelineState(TypedDict, total=False):
     # --- Input ---
     upload_id: uuid.UUID
-    dry_run: bool                    # True = validate only, no LinkedIn API call
-    tone: str | None              # compose-time tone override for the transform prompt
-    image_path: str | None        # local path to an image to attach on publish
-    source: str | None            # how the run was started: watcher|api|compose|compose-text
-    title: str | None             # optional human label for the post
-    skip_approval: bool           # dashboard "Publish to LinkedIn" after a reviewed dry run
+    dry_run: bool  # True = validate only, no LinkedIn API call
+    tone: str | None  # compose-time tone override for the transform prompt
+    image_path: str | None  # local path to an image to attach on publish
+    source: str | None  # how the run was started: watcher|api|compose|compose-text
+    title: str | None  # optional human label for the post
+    skip_approval: bool  # dashboard "Publish to LinkedIn" after a reviewed dry run
 
     # --- Post tracking ---
     post_id: uuid.UUID | None
@@ -31,15 +31,15 @@ class PipelineState(TypedDict, total=False):
 
     # --- Validation ---
     validation_passed: bool
-    validation_issues: list[dict]    # {"rule", "message", "severity"}
+    validation_issues: list[dict]  # {"rule", "message", "severity"}
 
     # --- Scheduling ---
-    scheduled_date: str | None    # ISO date YYYY-MM-DD
-    scheduled_slot: str | None    # HH:MM
+    scheduled_date: str | None  # ISO date YYYY-MM-DD
+    scheduled_slot: str | None  # HH:MM
 
     # --- Approval ---
     approval_id: uuid.UUID | None
-    approval_status: str | None   # pending|approved|rejected|timeout
+    approval_status: str | None  # pending|approved|rejected|timeout
 
     # --- Preview ---
     preview_result: dict | None

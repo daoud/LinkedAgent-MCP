@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -54,10 +54,8 @@ class CostTracker:
         await self._session.flush()
         return row
 
-    async def get_monthly_total(
-        self, year: int | None = None, month: int | None = None
-    ) -> Decimal:
-        now = datetime.now(timezone.utc)
+    async def get_monthly_total(self, year: int | None = None, month: int | None = None) -> Decimal:
+        now = datetime.now(UTC)
         year = year or now.year
         month = month or now.month
         result = await self._session.execute(

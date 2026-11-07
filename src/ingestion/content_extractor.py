@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import mimetypes
 from pathlib import Path
-from typing import Optional, Union
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -11,7 +10,7 @@ class ExtractionError(Exception):
     pass
 
 
-def detect_mime(file_path: Union[str, Path]) -> str:
+def detect_mime(file_path: str | Path) -> str:
     """Detect MIME type via stdlib mimetypes with magic-byte fallback."""
     fp = Path(file_path)
     mime, _ = mimetypes.guess_type(fp.name)
@@ -30,8 +29,8 @@ def detect_mime(file_path: Union[str, Path]) -> str:
 
 
 def extract_content(
-    file_path: Union[str, Path],
-    mime_type: Optional[str] = None,
+    file_path: str | Path,
+    mime_type: str | None = None,
 ) -> tuple[str, list[str]]:
     """Read a file and extract its text. Returns (text, image_refs).
 

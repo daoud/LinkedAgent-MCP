@@ -1,4 +1,5 @@
 """Unit tests for src/scheduling/scheduler.py — no DB required."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, time
@@ -45,6 +46,7 @@ def _clock(scheduler, when: datetime):
 # ---------------------------------------------------------------------------
 # Slot assignment
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_first_slot_when_day_empty(scheduler):
@@ -145,6 +147,7 @@ async def test_daily_post_limit_respected():
 # forward-only spacing + weekdays + date window
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_skips_slots_earlier_than_now_today(scheduler):
     """A batch dropped mid-afternoon should NOT be assigned the 09:00/13:00 slots."""
@@ -171,11 +174,15 @@ async def test_skips_inactive_weekdays():
     # weekdays = Mon..Fri only; 2026-05-02 is a Saturday, 05-03 a Sunday
     sched = PostScheduler(
         settings=Settings(
-            timezone="America/Halifax", post_slots="09:00", daily_post_limit=5,
+            timezone="America/Halifax",
+            post_slots="09:00",
+            daily_post_limit=5,
             database_url="postgresql://pipeline:pipeline@localhost:5433/pipeline",
             anthropic_api_key="test-key",
         ),
-        slots=[time(9, 0)], daily_limit=5, weekdays=[0, 1, 2, 3, 4],
+        slots=[time(9, 0)],
+        daily_limit=5,
+        weekdays=[0, 1, 2, 3, 4],
     )
     session = _mock_session([])
     post = Post()
@@ -188,11 +195,15 @@ async def test_skips_inactive_weekdays():
 async def test_respects_active_until():
     sched = PostScheduler(
         settings=Settings(
-            timezone="America/Halifax", post_slots="09:00", daily_post_limit=1,
+            timezone="America/Halifax",
+            post_slots="09:00",
+            daily_post_limit=1,
             database_url="postgresql://pipeline:pipeline@localhost:5433/pipeline",
             anthropic_api_key="test-key",
         ),
-        slots=[time(9, 0)], daily_limit=1, active_until=date(2026, 5, 1),
+        slots=[time(9, 0)],
+        daily_limit=1,
+        active_until=date(2026, 5, 1),
     )
     session = _mock_session([time(9, 0)])  # today's only slot is taken
     post = Post()
@@ -204,6 +215,7 @@ async def test_respects_active_until():
 # ---------------------------------------------------------------------------
 # next_run_time
 # ---------------------------------------------------------------------------
+
 
 def test_next_run_time_is_timezone_aware(scheduler):
     dt = scheduler.next_run_time(date(2026, 5, 1), time(9, 0))
@@ -227,13 +239,15 @@ def test_next_run_time_utc_conversion(scheduler):
 
 
 def test_next_run_time_utc_scheduler():
-    utc_sched = PostScheduler(settings=Settings(
-        timezone="UTC",
-        post_slots="09:00",
-        daily_post_limit=1,
-        database_url="postgresql://pipeline:pipeline@localhost:5433/pipeline",
-        anthropic_api_key="test-key",
-    ))
+    utc_sched = PostScheduler(
+        settings=Settings(
+            timezone="UTC",
+            post_slots="09:00",
+            daily_post_limit=1,
+            database_url="postgresql://pipeline:pipeline@localhost:5433/pipeline",
+            anthropic_api_key="test-key",
+        )
+    )
     dt = utc_sched.next_run_time(date(2026, 5, 1), time(9, 0))
     utc_dt = dt.astimezone(pytz.utc)
     assert utc_dt.hour == 9

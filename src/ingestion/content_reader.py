@@ -3,9 +3,8 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,16 +17,14 @@ from src.models.content_upload import ContentUpload
 async def read_content(
     upload_id: uuid.UUID,
     session: AsyncSession,
-    storage_client: Optional[StorageClient] = None,
+    storage_client: StorageClient | None = None,
 ) -> tuple[str, list[str]]:
     """Download + extract content for an existing ContentUpload record.
 
     Updates content_hash, mime_type, and processed_at on the DB row.
     Returns (extracted_text, image_refs).
     """
-    result = await session.execute(
-        select(ContentUpload).where(ContentUpload.id == upload_id)
-    )
+    result = await session.execute(select(ContentUpload).where(ContentUpload.id == upload_id))
     upload = result.scalar_one()
 
     if storage_client is None:
@@ -50,7 +47,7 @@ async def read_content(
 
     upload.content_hash = hashlib.sha256(file_bytes).hexdigest()
     upload.mime_type = mime_type
-    upload.processed_at = datetime.now(timezone.utc)
+    upload.processed_at = datetime.now(UTC)
     await session.commit()
 
     return text, image_refs

@@ -12,13 +12,13 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
-
 
 # ---------------------------------------------------------------------------
 # Result tracking
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CheckResult:
@@ -159,8 +159,11 @@ def check_storage_mode() -> tuple[bool, str]:
     if mode == "local":
         return True, "STORAGE_MODE=local — ensure /data/content is mounted"
     if mode == "s3":
-        missing = [v for v in ("AWS_S3_BUCKET", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
-                   if not os.environ.get(v) or os.environ.get(v) == "REPLACE_ME"]
+        missing = [
+            v
+            for v in ("AWS_S3_BUCKET", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
+            if not os.environ.get(v) or os.environ.get(v) == "REPLACE_ME"
+        ]
         if missing:
             return False, "S3 mode but missing: " + ", ".join(missing)
     return True, ""
@@ -177,10 +180,12 @@ def check_linkedin_profile_urn_format() -> tuple[bool, str]:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Production pre-deploy checklist")
-    parser.add_argument("--exit-on-error", action="store_true",
-                        help="Exit with code 1 if any check fails")
+    parser.add_argument(
+        "--exit-on-error", action="store_true", help="Exit with code 1 if any check fails"
+    )
     args = parser.parse_args()
 
     print("=" * 60)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 
 class RateLimiter:
@@ -15,7 +15,7 @@ class RateLimiter:
     def __init__(self, max_calls_per_day: int = 100) -> None:
         self.max_calls = max_calls_per_day
         self._remaining = max_calls_per_day
-        self._reset_at: Optional[float] = None
+        self._reset_at: float | None = None
         self._lock = Lock()
 
     # ---- public API --------------------------------------------------------
@@ -42,10 +42,7 @@ class RateLimiter:
     def update_from_headers(self, headers: Any) -> None:
         """Parse X-RateLimit-* headers from a LinkedIn response and update state."""
         with self._lock:
-            remaining = (
-                headers.get("x-ratelimit-remaining")
-                or headers.get("X-RateLimit-Remaining")
-            )
+            remaining = headers.get("x-ratelimit-remaining") or headers.get("X-RateLimit-Remaining")
             if remaining is not None:
                 self._remaining = int(remaining)
 

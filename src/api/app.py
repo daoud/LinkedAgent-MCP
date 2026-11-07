@@ -57,9 +57,7 @@ async def _poll_pending_uploads(app: FastAPI) -> None:
             upload.status = "processing"
             await session.flush()
             thread_id = f"upload-{upload.id}"
-            asyncio.create_task(
-                _run_pipeline_task(app.state.graph, upload.id, dry_run, thread_id)
-            )
+            asyncio.create_task(_run_pipeline_task(app.state.graph, upload.id, dry_run, thread_id))
         if uploads:
             await session.commit()
 
@@ -134,7 +132,9 @@ def _safe_job(fn):
             await fn(app)
         except Exception as exc:  # noqa: BLE001
             try:
-                await log_event("error", f"scheduler job {fn.__name__} failed: {exc}", node="scheduler")
+                await log_event(
+                    "error", f"scheduler job {fn.__name__} failed: {exc}", node="scheduler"
+                )
             except Exception:
                 pass
 

@@ -111,9 +111,7 @@ async def publish_node(state: PipelineState) -> dict:
 
     # ---- publish --------------------------------------------------------
     try:
-        result = await asyncio.to_thread(
-            client.publish, text, media_urns or None, dry_run
-        )
+        result = await asyncio.to_thread(client.publish, text, media_urns or None, dry_run)
     except Exception as exc:
         async with AsyncSessionLocal() as session:
             r = await session.execute(select(Post).where(Post.id == post_id))

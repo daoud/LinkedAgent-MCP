@@ -52,6 +52,7 @@ _TEXT_EXT = {".txt", ".md", ".markdown", ".pdf", ".doc", ".docx"}
 # helpers
 # ---------------------------------------------------------------------------
 
+
 def _err(msg: str, status: int = 200, **extra: Any) -> JSONResponse:
     return JSONResponse({"ok": False, "error": str(msg), **extra}, status_code=status)
 
@@ -97,6 +98,7 @@ def _post_dict(p: Post, *, full: bool = False) -> dict:
 # ---------------------------------------------------------------------------
 # overview / config
 # ---------------------------------------------------------------------------
+
 
 @router.get("/overview")
 async def overview() -> Any:
@@ -218,6 +220,7 @@ def _token_status() -> dict:
 # posts
 # ---------------------------------------------------------------------------
 
+
 @router.get("/posts")
 async def list_posts(status: str | None = None, limit: int = 50, offset: int = 0) -> Any:
     limit = max(1, min(limit, 200))
@@ -245,9 +248,7 @@ async def list_posts(status: str | None = None, limit: int = 50, offset: int = 0
 async def get_post(post_id: uuid.UUID) -> Any:
     try:
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             approvals = list(
@@ -306,9 +307,7 @@ async def patch_post(post_id: uuid.UUID, request: Request) -> Any:
     new_title = body.get("title")
     try:
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             if p.status in ("published", "publishing"):
@@ -326,13 +325,13 @@ async def patch_post(post_id: uuid.UUID, request: Request) -> Any:
 
 
 @router.post("/posts/{post_id}/retry")
-async def retry_post(post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
+async def retry_post(
+    post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks
+) -> Any:
     try:
         dry_run = _bool(request.query_params.get("dry_run"), default=True)
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             if p.upload_id is None:
@@ -352,20 +351,22 @@ async def retry_post(post_id: uuid.UUID, request: Request, background_tasks: Bac
             thread_id=thread_id,
             post_id=post_id,
         )
-        await log_event("info", f"Retry requested (dry_run={dry_run})", node="dashboard", post_id=post_id)
+        await log_event(
+            "info", f"Retry requested (dry_run={dry_run})", node="dashboard", post_id=post_id
+        )
         return _ok(post_id=str(post_id), thread_id=thread_id)
     except SQLAlchemyError as exc:
         return _err(f"could not retry: {exc}")
 
 
 @router.post("/posts/{post_id}/publish")
-async def publish_post(post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
+async def publish_post(
+    post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks
+) -> Any:
     """Publish a post that finished a dry run (or failed) — re-runs it LIVE."""
     try:
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             if p.status in ("published", "publishing"):
@@ -390,14 +391,18 @@ async def publish_post(post_id: uuid.UUID, request: Request, background_tasks: B
             post_id=post_id,
             extra_state={"skip_approval": True},
         )
-        await log_event("info", "LIVE publish requested from dashboard", node="dashboard", post_id=post_id)
+        await log_event(
+            "info", "LIVE publish requested from dashboard", node="dashboard", post_id=post_id
+        )
         return _ok(post_id=str(post_id), thread_id=thread_id, live=True)
     except SQLAlchemyError as exc:
         return _err(f"could not publish: {exc}")
 
 
 @router.post("/posts/{post_id}/decision")
-async def post_decision(post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
+async def post_decision(
+    post_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks
+) -> Any:
     try:
         body = await request.json()
     except Exception:
@@ -426,7 +431,12 @@ async def post_decision(post_id: uuid.UUID, request: Request, background_tasks: 
             decision,
             decided_by,
         )
-        await log_event("info", f"Approval decision: {decision} by {decided_by}", node="dashboard", post_id=post_id)
+        await log_event(
+            "info",
+            f"Approval decision: {decision} by {decided_by}",
+            node="dashboard",
+            post_id=post_id,
+        )
         return _ok(approval_id=str(approval_id), decision=decision)
     except SQLAlchemyError as exc:
         return _err(f"could not record decision: {exc}")
@@ -438,9 +448,7 @@ async def delete_from_linkedin(post_id: uuid.UUID) -> Any:
     settings = get_settings()
     try:
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             urn = p.linkedin_post_id
@@ -450,19 +458,24 @@ async def delete_from_linkedin(post_id: uuid.UUID) -> Any:
             return _err("LinkedIn is not configured", status=400)
 
         auth = LinkedInAuth.from_settings(settings)
-        client = LinkedInClient(auth=auth, profile_urn=settings.linkedin_profile_urn or "urn:li:person:unknown")
+        client = LinkedInClient(
+            auth=auth, profile_urn=settings.linkedin_profile_urn or "urn:li:person:unknown"
+        )
         try:
             ok = await asyncio.to_thread(client.delete_post, urn)
         except Exception as exc:  # noqa: BLE001
-            await log_event("error", f"LinkedIn delete failed for {urn}: {exc}", node="dashboard", post_id=post_id)
+            await log_event(
+                "error",
+                f"LinkedIn delete failed for {urn}: {exc}",
+                node="dashboard",
+                post_id=post_id,
+            )
             return _err(f"LinkedIn API error: {exc}")
         if not ok:
             return _err("LinkedIn rejected the delete — the post may still be live")
 
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is not None:
                 p.status = "rejected"
                 p.last_error = f"Deleted from LinkedIn via dashboard ({urn})"
@@ -477,6 +490,7 @@ async def delete_from_linkedin(post_id: uuid.UUID) -> Any:
 # ---------------------------------------------------------------------------
 # approvals
 # ---------------------------------------------------------------------------
+
 
 @router.get("/approvals")
 async def list_approvals() -> Any:
@@ -508,7 +522,9 @@ async def list_approvals() -> Any:
                     "created_at": a.created_at.isoformat() if a.created_at else None,
                     "expires_in_h": expires_in,
                     "scheduled_date": p.scheduled_date.isoformat() if p.scheduled_date else None,
-                    "scheduled_slot": p.scheduled_slot.strftime("%H:%M") if p.scheduled_slot else None,
+                    "scheduled_slot": (
+                        p.scheduled_slot.strftime("%H:%M") if p.scheduled_slot else None
+                    ),
                 }
             )
         return _ok(approvals=out)
@@ -517,7 +533,9 @@ async def list_approvals() -> Any:
 
 
 @router.post("/approvals/{approval_id}")
-async def decide_approval(approval_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks) -> Any:
+async def decide_approval(
+    approval_id: uuid.UUID, request: Request, background_tasks: BackgroundTasks
+) -> Any:
     try:
         body = await request.json()
     except Exception:
@@ -548,6 +566,7 @@ async def decide_approval(approval_id: uuid.UUID, request: Request, background_t
 # ---------------------------------------------------------------------------
 # prompt templates
 # ---------------------------------------------------------------------------
+
 
 @router.get("/templates")
 async def list_templates() -> Any:
@@ -590,7 +609,9 @@ async def save_template(request: Request) -> Any:
     name = (body.get("name") or "linkedin_post").strip()
     text = body.get("template_text")
     if not text or "{content}" not in text:
-        return _err("template_text is required and must contain the {content} placeholder", status=400)
+        return _err(
+            "template_text is required and must contain the {content} placeholder", status=400
+        )
     try:
         async with AsyncSessionLocal() as session:
             latest = (
@@ -604,9 +625,7 @@ async def save_template(request: Request) -> Any:
             next_version = (latest.version + 1) if latest else 1
             # deactivate every existing version of this name
             for t in (
-                await session.execute(
-                    select(PromptTemplate).where(PromptTemplate.name == name)
-                )
+                await session.execute(select(PromptTemplate).where(PromptTemplate.name == name))
             ).scalars():
                 t.is_active = False
             row = PromptTemplate(
@@ -619,7 +638,9 @@ async def save_template(request: Request) -> Any:
             session.add(row)
             await session.commit()
             tid = str(row.id)
-        await log_event("info", f"Prompt template '{name}' v{next_version} saved & activated", node="dashboard")
+        await log_event(
+            "info", f"Prompt template '{name}' v{next_version} saved & activated", node="dashboard"
+        )
         return _ok(id=tid, name=name, version=next_version)
     except SQLAlchemyError as exc:
         return _err(f"could not save template: {exc}")
@@ -630,14 +651,14 @@ async def activate_template(template_id: uuid.UUID) -> Any:
     try:
         async with AsyncSessionLocal() as session:
             t = (
-                await session.execute(select(PromptTemplate).where(PromptTemplate.id == template_id))
+                await session.execute(
+                    select(PromptTemplate).where(PromptTemplate.id == template_id)
+                )
             ).scalar_one_or_none()
             if t is None:
                 return _err("template not found", status=404)
             for other in (
-                await session.execute(
-                    select(PromptTemplate).where(PromptTemplate.name == t.name)
-                )
+                await session.execute(select(PromptTemplate).where(PromptTemplate.name == t.name))
             ).scalars():
                 other.is_active = other.id == t.id
             await session.commit()
@@ -650,10 +671,15 @@ async def activate_template(template_id: uuid.UUID) -> Any:
 # logs
 # ---------------------------------------------------------------------------
 
+
 @router.get("/logs")
-async def get_logs(after_seq: int = 0, level: str | None = None, q: str | None = None, limit: int = 500) -> Any:
+async def get_logs(
+    after_seq: int = 0, level: str | None = None, q: str | None = None, limit: int = 500
+) -> Any:
     try:
-        items = RING.query(after_seq=after_seq, level=level, contains=q, limit=max(1, min(limit, 2000)))
+        items = RING.query(
+            after_seq=after_seq, level=level, contains=q, limit=max(1, min(limit, 2000))
+        )
         return _ok(logs=items, latest_seq=RING.latest_seq())
     except Exception as exc:  # noqa: BLE001
         return _err(f"log read failed: {exc}")
@@ -669,6 +695,7 @@ async def clear_logs() -> Any:
 # media
 # ---------------------------------------------------------------------------
 
+
 @router.get("/media/{name}")
 async def get_media(name: str) -> Any:
     safe = Path(name).name  # strip any path components
@@ -681,6 +708,7 @@ async def get_media(name: str) -> Any:
 # ---------------------------------------------------------------------------
 # compose — the main "write a post" entry point
 # ---------------------------------------------------------------------------
+
 
 @router.post("/compose")
 async def compose(
@@ -705,7 +733,11 @@ async def compose(
                 return _err(f"unsupported content file type: {Path(src_name).suffix}", status=400)
         elif text.strip():
             raw_bytes = text.strip().encode("utf-8")
-            slug = "".join(c for c in (title or "post")[:40] if c.isalnum() or c in "-_ ").strip().replace(" ", "-")
+            slug = (
+                "".join(c for c in (title or "post")[:40] if c.isalnum() or c in "-_ ")
+                .strip()
+                .replace(" ", "-")
+            )
             src_name = f"compose-{slug or 'post'}-{uuid.uuid4().hex[:8]}.md"
         else:
             return _err("provide either 'text' or a content 'file'", status=400)
@@ -928,7 +960,9 @@ async def put_schedule(request: Request) -> Any:
         slots = sorted({f"{int(s.split(':')[0]):02d}:{int(s.split(':')[1]):02d}" for s in slots})
 
     wd = body.get("weekdays")
-    if wd is not None and (not isinstance(wd, list) or not all(isinstance(x, int) and 0 <= x <= 6 for x in wd)):
+    if wd is not None and (
+        not isinstance(wd, list) or not all(isinstance(x, int) and 0 <= x <= 6 for x in wd)
+    ):
         return _err("weekdays must be a list of ints 0..6 (Mon..Sun)", status=400)
 
     try:
@@ -966,8 +1000,15 @@ async def schedule_queue() -> Any:
                 (
                     await session.execute(
                         select(Post)
-                        .where(Post.status.in_(["scheduled", "awaiting_approval", "processing", "publishing"]))
-                        .order_by(Post.scheduled_date.asc().nulls_last(), Post.scheduled_slot.asc().nulls_last())
+                        .where(
+                            Post.status.in_(
+                                ["scheduled", "awaiting_approval", "processing", "publishing"]
+                            )
+                        )
+                        .order_by(
+                            Post.scheduled_date.asc().nulls_last(),
+                            Post.scheduled_slot.asc().nulls_last(),
+                        )
                     )
                 ).scalars()
             )
@@ -1004,9 +1045,7 @@ async def reschedule_post(post_id: uuid.UUID, request: Request) -> Any:
         from datetime import time as _time
 
         async with AsyncSessionLocal() as session:
-            p = (
-                await session.execute(select(Post).where(Post.id == post_id))
-            ).scalar_one_or_none()
+            p = (await session.execute(select(Post).where(Post.id == post_id))).scalar_one_or_none()
             if p is None:
                 return _err("post not found", status=404)
             if p.status in ("published", "publishing"):
@@ -1025,6 +1064,7 @@ async def reschedule_post(post_id: uuid.UUID, request: Request) -> Any:
 # content sources (Google Drive folders, ...)
 # ---------------------------------------------------------------------------
 
+
 @router.get("/sources")
 async def list_sources() -> Any:
     from src.models.content_source import ContentSource
@@ -1032,7 +1072,9 @@ async def list_sources() -> Any:
     try:
         async with AsyncSessionLocal() as session:
             rows = list(
-                (await session.execute(select(ContentSource).order_by(ContentSource.created_at))).scalars()
+                (
+                    await session.execute(select(ContentSource).order_by(ContentSource.created_at))
+                ).scalars()
             )
         return _ok(
             sources=[
@@ -1137,6 +1179,7 @@ async def poll_sources_now() -> Any:
 # ---------------------------------------------------------------------------
 # util
 # ---------------------------------------------------------------------------
+
 
 def _bool(v: Any, default: bool = False) -> bool:
     if v is None:

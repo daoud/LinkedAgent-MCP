@@ -1,4 +1,5 @@
 """Unit tests for src/pipeline/nodes/extract.py — mocked session, no DB."""
+
 from __future__ import annotations
 
 import uuid
@@ -81,9 +82,7 @@ async def test_extract_reuses_and_resets_post_on_retry():
             new=AsyncMock(return_value=("fresh body", [])),
         ),
     ):
-        out = await extract_node(
-            {"upload_id": upload_id, "dry_run": False, "post_id": post.id}
-        )
+        out = await extract_node({"upload_id": upload_id, "dry_run": False, "post_id": post.id})
 
     # Same row, not a new one
     session.add.assert_not_called()

@@ -1,4 +1,5 @@
 """Unit tests for preview_node / publish_node reading the edited draft from the row."""
+
 from __future__ import annotations
 
 import uuid
@@ -42,9 +43,7 @@ async def test_preview_uses_edited_row_text_over_state():
         patch("src.pipeline.nodes.preview.AsyncSessionLocal", return_value=_session_cm(post)),
         patch("src.pipeline.nodes.preview.get_settings", return_value=settings),
     ):
-        out = await preview_node(
-            {"post_id": post.id, "transformed_text": "stale llm draft"}
-        )
+        out = await preview_node({"post_id": post.id, "transformed_text": "stale llm draft"})
 
     assert "REVIEWER EDITED VERSION" in out["preview_result"]["preview"]
     assert out["transformed_text"] == "REVIEWER EDITED VERSION"

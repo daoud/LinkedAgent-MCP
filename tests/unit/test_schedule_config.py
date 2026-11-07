@@ -1,4 +1,5 @@
 """Pure-function tests for the runtime schedule config helpers."""
+
 from __future__ import annotations
 
 from datetime import time

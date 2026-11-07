@@ -4,7 +4,6 @@ import shutil
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 
 class StorageClient(ABC):
@@ -58,8 +57,8 @@ class S3StorageClient(StorageClient):
         self,
         bucket: str,
         region: str,
-        access_key_id: Optional[str] = None,
-        secret_access_key: Optional[str] = None,
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
     ) -> None:
         import boto3  # noqa: PLC0415
 

@@ -33,7 +33,9 @@ class PostScheduler:
         self._settings = settings or get_settings()
         self._tz = pytz.timezone(self._settings.timezone)
         self._slots = sorted(set(slots)) if slots is not None else self._settings.post_slots_list
-        self._daily_limit = daily_limit if daily_limit is not None else self._settings.daily_post_limit
+        self._daily_limit = (
+            daily_limit if daily_limit is not None else self._settings.daily_post_limit
+        )
         self._weekdays = weekdays if weekdays else _ALL_WEEKDAYS
         self._active_from = active_from
         self._active_until = active_until
@@ -50,7 +52,9 @@ class PostScheduler:
         target_date = today
         for _ in range(400):
             if self._date_is_active(target_date):
-                slot = await self._first_free_slot(target_date, session, is_today=target_date == today)
+                slot = await self._first_free_slot(
+                    target_date, session, is_today=target_date == today
+                )
                 if slot is not None:
                     post.scheduled_date = target_date
                     post.scheduled_slot = slot
@@ -74,10 +78,7 @@ class PostScheduler:
         if len(occupied) >= self._daily_limit:
             return None
         now_t = self._now_local().time() if is_today else None
-        available = [
-            s for s in self._slots
-            if s not in occupied and (now_t is None or s > now_t)
-        ]
+        available = [s for s in self._slots if s not in occupied and (now_t is None or s > now_t)]
         return available[0] if available else None
 
     async def _occupied_slots(self, target_date: date, session: AsyncSession) -> list[time]:

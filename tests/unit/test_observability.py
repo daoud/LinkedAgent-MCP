@@ -1,19 +1,15 @@
 """Unit tests for Phase 9 — Observability + Security."""
+
 from __future__ import annotations
 
 import logging
-import os
 from contextlib import asynccontextmanager
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-import structlog
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.api.routes import health
-from src.database import get_db
-
 
 # ---------------------------------------------------------------------------
 # T-9.1: Structured logging
@@ -123,7 +119,6 @@ class TestTracing:
         configure_tracing(service_name="test-service")
 
     def test_get_tracer_returns_tracer(self):
-        from opentelemetry import trace
 
         from src.observability.tracing import get_tracer
 

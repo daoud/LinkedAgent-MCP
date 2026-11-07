@@ -14,7 +14,7 @@ from src.scheduling.scheduler import PostScheduler
 try:
     from langgraph.types import interrupt
 except ImportError:  # langgraph < 0.2
-    from langgraph.errors import NodeInterrupt as interrupt
+    from langgraph.errors import NodeInterrupt as interrupt  # noqa: N813
 
 
 async def wait_for_slot_node(state: PipelineState) -> dict:

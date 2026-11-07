@@ -1,4 +1,5 @@
 """Unit tests for src/scheduling/dedup.py — no DB required."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,10 +10,10 @@ import pytest
 from src.models.post import Post
 from src.scheduling.dedup import compute_hash, is_duplicate, set_content_hash
 
-
 # ---------------------------------------------------------------------------
 # compute_hash
 # ---------------------------------------------------------------------------
+
 
 def test_compute_hash_deterministic():
     assert compute_hash("Hello World") == compute_hash("Hello World")
@@ -47,6 +48,7 @@ def test_compute_hash_empty_string():
 # set_content_hash
 # ---------------------------------------------------------------------------
 
+
 def test_set_content_hash_assigns_to_post():
     post = Post()
     h = set_content_hash(post, "my content")
@@ -70,6 +72,7 @@ def test_set_content_hash_overwrites_previous():
 # ---------------------------------------------------------------------------
 # is_duplicate (async, mocked session)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_is_duplicate_returns_true_when_hash_exists():

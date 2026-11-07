@@ -6,17 +6,17 @@ import logging
 import mimetypes
 from pathlib import Path
 
-_log = logging.getLogger("pipeline")
-
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+_log = logging.getLogger("pipeline")
 _main_loop: asyncio.AbstractEventLoop | None = None
 
 
 def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
     global _main_loop
     _main_loop = loop
+
 
 _IGNORED_PREFIXES = (".", "_", "~")
 _IGNORED_SUFFIXES = frozenset((".tmp", ".part", ".swp", ".crdownload", ".ds_store"))

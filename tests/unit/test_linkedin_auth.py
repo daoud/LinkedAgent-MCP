@@ -1,6 +1,6 @@
 """Unit tests for src/linkedin/auth.py — no real API calls."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -33,19 +33,19 @@ def test_no_expiry_is_not_expired():
 
 
 def test_far_future_expiry_is_not_expired():
-    future = datetime.now(timezone.utc) + timedelta(days=30)
+    future = datetime.now(UTC) + timedelta(days=30)
     auth = _make_auth(expires_at=future)
     assert auth.is_token_expired() is False
 
 
 def test_within_7_days_is_expired():
-    soon = datetime.now(timezone.utc) + timedelta(days=5)
+    soon = datetime.now(UTC) + timedelta(days=5)
     auth = _make_auth(expires_at=soon)
     assert auth.is_token_expired() is True
 
 
 def test_past_expiry_is_expired():
-    past = datetime.now(timezone.utc) - timedelta(days=1)
+    past = datetime.now(UTC) - timedelta(days=1)
     auth = _make_auth(expires_at=past)
     assert auth.is_token_expired() is True
 
@@ -59,7 +59,7 @@ def test_days_until_expiry_none_when_unknown():
 
 
 def test_days_until_expiry_positive():
-    future = datetime.now(timezone.utc) + timedelta(days=20)
+    future = datetime.now(UTC) + timedelta(days=20)
     auth = _make_auth(expires_at=future)
     days = auth.days_until_expiry()
     assert days is not None
@@ -120,7 +120,7 @@ def test_get_access_token_auto_refreshes_near_expiry():
     respx.post("https://www.linkedin.com/oauth/v2/accessToken").mock(
         return_value=httpx.Response(200, json={"access_token": "refreshed_token"})
     )
-    soon = datetime.now(timezone.utc) + timedelta(days=3)
+    soon = datetime.now(UTC) + timedelta(days=3)
     auth = _make_auth(access_token="old_token", expires_at=soon)
     token = auth.get_access_token()
     assert token == "refreshed_token"

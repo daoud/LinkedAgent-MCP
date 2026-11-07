@@ -45,7 +45,9 @@ async def transform_node(state: PipelineState) -> dict:
     )
 
     async with AsyncSessionLocal() as session:
-        await CostTracker(session).record(post_id, result.model, result.input_tokens, result.output_tokens)
+        await CostTracker(session).record(
+            post_id, result.model, result.input_tokens, result.output_tokens
+        )
         r = await session.execute(select(Post).where(Post.id == post_id))
         post = r.scalar_one()
         post.transformed_text = result.transformed_text

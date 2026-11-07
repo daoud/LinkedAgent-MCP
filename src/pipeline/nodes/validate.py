@@ -21,10 +21,7 @@ async def validate_node(state: PipelineState) -> dict:
     validator = Validator(api_key=settings.anthropic_api_key)
     result = await asyncio.to_thread(validator.validate, text)
 
-    issues = [
-        {"rule": i.rule, "message": i.message, "severity": i.severity}
-        for i in result.issues
-    ]
+    issues = [{"rule": i.rule, "message": i.message, "severity": i.severity} for i in result.issues]
 
     total_tokens = state.get("total_tokens", 0) + result.input_tokens + result.output_tokens
     total_cost = float(state.get("total_cost_usd", 0.0))

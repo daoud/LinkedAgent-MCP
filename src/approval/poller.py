@@ -55,7 +55,11 @@ class ApprovalPoller:
                 await self._notifier.notify_decision(approval)
                 actioned.append(approval)
             except Exception as exc:
-                _log.error("[approval-poller] failed to record decision for %s: %s", entry.get("approval_id"), exc)
+                _log.error(
+                    "[approval-poller] failed to record decision for %s: %s",
+                    entry.get("approval_id"),
+                    exc,
+                )
                 continue
 
             try:
@@ -66,6 +70,10 @@ class ApprovalPoller:
                 # on every poll cycle forever.
                 self._sheets.update_decision(entry["approval_id"], f"{entry['decision']}:synced")
             except Exception as exc:
-                _log.warning("[approval-poller] failed to sync back decision for %s: %s", entry.get("approval_id"), exc)
+                _log.warning(
+                    "[approval-poller] failed to sync back decision for %s: %s",
+                    entry.get("approval_id"),
+                    exc,
+                )
 
         return actioned

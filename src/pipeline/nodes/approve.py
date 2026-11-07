@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 
@@ -15,7 +15,9 @@ from src.pipeline.state import PipelineState
 try:
     from langgraph.types import interrupt
 except ImportError:  # langgraph < 0.2
-    from langgraph.errors import NodeInterrupt as interrupt  # type: ignore[assignment]
+    from langgraph.errors import (
+        NodeInterrupt as interrupt,  # type: ignore[assignment]  # noqa: N813
+    )
 
 
 async def approve_node(state: PipelineState) -> dict:
@@ -62,14 +64,12 @@ async def approve_node(state: PipelineState) -> dict:
             .where(Approval.id == approval_id)
             .values(
                 decision=decision,
-                decided_at=datetime.now(timezone.utc),
+                decided_at=datetime.now(UTC),
                 decided_by=decided_by,
             )
         )
         post_status = "approved" if decision == "approved" else "rejected"
-        await session.execute(
-            update(Post).where(Post.id == post_id).values(status=post_status)
-        )
+        await session.execute(update(Post).where(Post.id == post_id).values(status=post_status))
         await session.commit()
 
     return {"approval_id": approval_id, "approval_status": decision}

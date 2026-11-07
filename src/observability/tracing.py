@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -43,9 +42,7 @@ def get_tracer(name: str = "linkedin-pipeline") -> trace.Tracer:
 
 
 @contextmanager
-def trace_span(
-    name: str, attributes: dict | None = None
-) -> Generator[trace.Span, None, None]:
+def trace_span(name: str, attributes: dict | None = None) -> Generator[trace.Span, None, None]:
     tracer = get_tracer()
     with tracer.start_as_current_span(name) as span:
         if attributes:
